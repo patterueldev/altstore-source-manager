@@ -1,0 +1,45 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "github:NixOS/nixpkgs/nixpkgs-unstable": {
+      "last_modified": "2025-12-18T02:44:17Z",
+      "resolved": "github:NixOS/nixpkgs/def3da69945bbe338c373fddad5a1bb49cf199ce?lastModified=1766025857"
+    },
+    "jetbrains.jdk@latest": {
+      "last_modified": "2025-12-15T04:22:15Z",
+      "resolved": "github:NixOS/nixpkgs/09b8fda8959d761445f12b55f380d90375a1d6bb#jetbrains.jdk",
+      "source": "devbox-search",
+      "version": "21.0.9-b1163.86",
+      "systems": {
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/9m8q9lp84dl54ib1gpp4l1njxaqnxrxj-jetbrains-jdk-jcef-21.0.9-b1163.86",
+              "default": true
+            },
+            {
+              "name": "debug",
+              "path": "/nix/store/rij4m6kkk9n5nz9pnzxgkmikyh16m261-jetbrains-jdk-jcef-21.0.9-b1163.86-debug"
+            }
+          ],
+          "store_path": "/nix/store/9m8q9lp84dl54ib1gpp4l1njxaqnxrxj-jetbrains-jdk-jcef-21.0.9-b1163.86"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/wmb37z0590x8l85awb7h6yyfhk3ws99k-jetbrains-jdk-jcef-21.0.9-b1163.86",
+              "default": true
+            },
+            {
+              "name": "debug",
+              "path": "/nix/store/967h0s2kpdrcxb8jlsagm2i7b414lm80-jetbrains-jdk-jcef-21.0.9-b1163.86-debug"
+            }
+          ],
+          "store_path": "/nix/store/wmb37z0590x8l85awb7h6yyfhk3ws99k-jetbrains-jdk-jcef-21.0.9-b1163.86"
+        }
+      }
+    }
+  }
+}
