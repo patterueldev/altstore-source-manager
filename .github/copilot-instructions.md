@@ -47,6 +47,8 @@ Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0
 
 **PR Titles**: Use the same format; squash commits with conventional title on merge.
 
+**Branch Naming**: Create branches using the format `<type>/#<issue-number>-<short-description>` (e.g., `chore/#1-initial-setup`, `feat/#5-app-crud`). The `#` precedes the issue number directly.
+
 **PR Template**: Use [.github/pull_request_template.md](.github/pull_request_template.md) as a guide when creating pull requests. The template includes Conventional Commits format guidance, type checklist, and standard sections for description, testing, and related issues.
 
 ## AltStore Source JSON (essentials)
