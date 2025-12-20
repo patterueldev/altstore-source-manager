@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: altstore-source-manager
+server:
+  port: 8080

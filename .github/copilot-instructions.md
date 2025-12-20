@@ -11,14 +11,20 @@
 - Auth: Planned; keep interfaces boundary-friendly to add later.
 
 ## Dev Environment
-- Devbox is configured; enter shell before running tools: `devbox shell`.
+- Codespaces: Skip Devbox. The container is already isolated and Devbox may require `sudo` in Codespaces; use the preinstalled tools (JDK/Gradle, etc.).
+- Local development: Use Devbox to isolate dependencies across multiple concurrent projects. Enter the shell with `devbox shell`.
 - Packages list is empty; add per stack (Node, Python, Go, etc.) in [devbox.json](devbox.json). Keep scripts minimal and documented in README.
+
+### Environment Detection
+- Preferred: Detect Codespaces via environment: `CODESPACES=true`, presence of `CODESPACE_NAME`, or `GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`. Heuristic: path under `/workspaces/...`.
+- Override: Create a `.workenv` file (gitignored) in the repo root containing either `codespaces` or `local`. Use `scripts/detect-env.sh` to resolve the current environment.
 
 ## Workflows & Conventions
 - Keep documentation tight: update [README.md](README.md) and this file when decisions land.
 - Prefer small PRs: backend scaffold → core CRUD → source JSON generation → UI.
 - Store generated source JSON under a clear route (e.g., `/source.json`) and keep server-side schema validation close to the generator.
 - Use clear domain naming: `App`, `Version`, `Build`, `Source` for entities/paths.
+ - Commit behavior: Do not auto-commit changes unless the user explicitly requests it. Default to leaving changes staged/uncommitted for short periods as directed.
 
 ## Commit & Pull Request Conventions
 Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/#specification) for all commits and PR titles:
@@ -46,6 +52,8 @@ Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0
 - `refactor(ui)!: migrate to new component library`
 
 **PR Titles**: Use the same format; squash commits with conventional title on merge.
+
+**Branch Naming**: Create branches using the format `<type>/#<issue-number>-<short-description>` (e.g., `chore/#1-initial-setup`, `feat/#5-app-crud`). The `#` precedes the issue number directly.
 
 **PR Template**: Use [.github/pull_request_template.md](.github/pull_request_template.md) as a guide when creating pull requests. The template includes Conventional Commits format guidance, type checklist, and standard sections for description, testing, and related issues.
 
