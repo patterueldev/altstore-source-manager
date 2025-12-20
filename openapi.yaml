@@ -1,0 +1,827 @@
+openapi: 3.0.0
+info:
+  title: AltStore Source Manager API
+  description: |
+    RESTful API for managing AltStore app sources (apps, versions, builds) 
+    and generating valid AltStore source JSON for distribution.
+  version: 1.0.0
+  contact:
+    name: AltStore Source Manager
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server (placeholder)
+
+tags:
+  - name: Health
+    description: System health and status endpoints
+  - name: Source
+    description: Public AltStore source JSON endpoint
+  - name: Apps
+    description: Application CRUD operations
+  - name: Versions
+    description: Application version management
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health Check
+      description: Simple health check endpoint to verify the API is running.
+      operationId: getHealth
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+              example:
+                status: ok
+
+  /source.json:
+    get:
+      tags:
+        - Source
+      summary: Get AltStore Source JSON
+      description: |
+        Returns the current AltStore source JSON. This is the public-facing endpoint 
+        for app distribution. The source is auto-generated from the current app and version data.
+      operationId: getSourceJson
+      responses:
+        '200':
+          description: AltStore source JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+              example:
+                name: My Source
+                identifier: com.example.source
+                apps:
+                  - name: My App
+                    bundleIdentifier: com.example.app
+                    developerName: Example Dev
+                    subtitle: A cool app
+                    iconURL: https://example.com/icon.png
+                    versions:
+                      - version: 1.0.0
+                        date: '2025-01-01'
+                        localizedDescription: Initial release
+                        downloadURL: https://example.com/MyApp-1.0.0.ipa
+                        size: 50000000
+                        minOSVersion: '14.0'
+                        sha256: abc123def456...
+
+  /api/apps:
+    get:
+      tags:
+        - Apps
+      summary: List All Apps
+      description: Retrieve all apps in the source.
+      operationId: listApps
+      responses:
+        '200':
+          description: List of all apps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/App'
+              example:
+                - name: App 1
+                  bundleIdentifier: com.example.app1
+                  developerName: Dev 1
+                  subtitle: First app
+                  iconURL: https://example.com/icon1.png
+                  versions: []
+                - name: App 2
+                  bundleIdentifier: com.example.app2
+                  developerName: Dev 2
+                  versions: []
+
+    post:
+      tags:
+        - Apps
+      summary: Create App
+      description: Create a new app in the source.
+      operationId: createApp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAppRequest'
+            example:
+              name: My App
+              bundleIdentifier: com.example.app
+              developerName: Example Dev
+              subtitle: A cool app
+              iconURL: https://example.com/icon.png
+      responses:
+        '201':
+          description: App created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/App'
+              example:
+                name: My App
+                bundleIdentifier: com.example.app
+                developerName: Example Dev
+                subtitle: A cool app
+                iconURL: https://example.com/icon.png
+                versions: []
+        '400':
+          description: Invalid request (validation failed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Validation failed
+                message: bundleIdentifier is required
+                details: null
+        '409':
+          description: App already exists (duplicate bundleIdentifier)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Conflict
+                message: App with bundleIdentifier 'com.example.app' already exists
+
+  /api/apps/{bundleIdentifier}:
+    get:
+      tags:
+        - Apps
+      summary: Get App by Bundle Identifier
+      description: Retrieve a specific app by its bundle identifier.
+      operationId: getApp
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The unique bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+      responses:
+        '200':
+          description: App found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/App'
+              example:
+                name: My App
+                bundleIdentifier: com.example.app
+                developerName: Example Dev
+                subtitle: A cool app
+                iconURL: https://example.com/icon.png
+                versions: []
+        '404':
+          description: App not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: App with bundleIdentifier 'com.example.notfound' not found
+
+    put:
+      tags:
+        - Apps
+      summary: Update App
+      description: |
+        Update an existing app's metadata. Does not modify versions.
+        Only provided fields are updated; omitted fields are left unchanged.
+      operationId: updateApp
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The unique bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAppRequest'
+            example:
+              name: Updated App Name
+              developerName: New Developer
+              subtitle: Updated subtitle
+              iconURL: https://example.com/new-icon.png
+      responses:
+        '200':
+          description: App updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/App'
+              example:
+                name: Updated App Name
+                bundleIdentifier: com.example.app
+                developerName: New Developer
+                subtitle: Updated subtitle
+                iconURL: https://example.com/new-icon.png
+                versions: []
+        '404':
+          description: App not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: App with bundleIdentifier 'com.example.notfound' not found
+
+    delete:
+      tags:
+        - Apps
+      summary: Delete App
+      description: |
+        Delete an app and all its versions. This operation cascades 
+        and removes all associated version data.
+      operationId: deleteApp
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The unique bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+      responses:
+        '204':
+          description: App deleted successfully
+        '404':
+          description: App not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: App with bundleIdentifier 'com.example.notfound' not found
+
+  /api/apps/{bundleIdentifier}/versions:
+    get:
+      tags:
+        - Versions
+      summary: List Versions for App
+      description: Retrieve all versions for a specific app.
+      operationId: listVersions
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+      responses:
+        '200':
+          description: List of all versions for the app
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AppVersion'
+              example:
+                - version: '1.0.0'
+                  date: '2025-01-01'
+                  localizedDescription: Initial release
+                  downloadURL: https://example.com/MyApp-1.0.0.ipa
+                  size: 50000000
+                  minOSVersion: '14.0'
+                  sha256: abc123def456...
+                - version: '1.1.0'
+                  date: '2025-01-15'
+                  downloadURL: https://example.com/MyApp-1.1.0.ipa
+        '404':
+          description: App not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: App with bundleIdentifier 'com.example.notfound' not found
+
+    post:
+      tags:
+        - Versions
+      summary: Create Version
+      description: Create a new version for an app.
+      operationId: createVersion
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVersionRequest'
+            example:
+              version: '1.0.0'
+              date: '2025-01-01'
+              localizedDescription: Initial release
+              downloadURL: https://example.com/MyApp-1.0.0.ipa
+              size: 50000000
+              minOSVersion: '14.0'
+              sha256: abc123def456...
+      responses:
+        '201':
+          description: Version created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppVersion'
+              example:
+                version: '1.0.0'
+                date: '2025-01-01'
+                localizedDescription: Initial release
+                downloadURL: https://example.com/MyApp-1.0.0.ipa
+                size: 50000000
+                minOSVersion: '14.0'
+                sha256: abc123def456...
+        '400':
+          description: Invalid request (validation failed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Validation failed
+                message: version is required
+        '404':
+          description: App not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: App with bundleIdentifier 'com.example.notfound' not found
+        '409':
+          description: Version already exists for this app
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Conflict
+                message: Version '1.0.0' already exists for app 'com.example.app'
+
+  /api/apps/{bundleIdentifier}/versions/{version}:
+    get:
+      tags:
+        - Versions
+      summary: Get Specific Version
+      description: Retrieve a specific version of an app.
+      operationId: getVersion
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+        - name: version
+          in: path
+          required: true
+          description: The semantic version string
+          schema:
+            type: string
+          example: '1.0.0'
+      responses:
+        '200':
+          description: Version found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppVersion'
+              example:
+                version: '1.0.0'
+                date: '2025-01-01'
+                localizedDescription: Initial release
+                downloadURL: https://example.com/MyApp-1.0.0.ipa
+                size: 50000000
+                minOSVersion: '14.0'
+                sha256: abc123def456...
+        '404':
+          description: App or version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: Version '1.0.0' not found for app 'com.example.app'
+
+    put:
+      tags:
+        - Versions
+      summary: Update Version
+      description: |
+        Update an existing version. Only provided fields are updated; 
+        omitted fields are left unchanged. The version string cannot be changed.
+      operationId: updateVersion
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+        - name: version
+          in: path
+          required: true
+          description: The semantic version string
+          schema:
+            type: string
+          example: '1.0.0'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVersionRequest'
+            example:
+              date: '2025-01-02'
+              localizedDescription: Updated release notes
+              downloadURL: https://example.com/MyApp-1.0.0.ipa
+              size: 51000000
+              minOSVersion: '14.0'
+              sha256: def456abc123...
+      responses:
+        '200':
+          description: Version updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppVersion'
+              example:
+                version: '1.0.0'
+                date: '2025-01-02'
+                localizedDescription: Updated release notes
+                downloadURL: https://example.com/MyApp-1.0.0.ipa
+                size: 51000000
+                minOSVersion: '14.0'
+                sha256: def456abc123...
+        '404':
+          description: App or version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: Version '1.0.0' not found for app 'com.example.app'
+
+    delete:
+      tags:
+        - Versions
+      summary: Delete Version
+      description: Delete a specific version from an app.
+      operationId: deleteVersion
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+        - name: version
+          in: path
+          required: true
+          description: The semantic version string
+          schema:
+            type: string
+          example: '1.0.0'
+      responses:
+        '204':
+          description: Version deleted successfully
+        '404':
+          description: App or version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: Version '1.0.0' not found for app 'com.example.app'
+
+components:
+  schemas:
+    Source:
+      type: object
+      description: AltStore source object containing apps and metadata.
+      required:
+        - name
+        - identifier
+      properties:
+        name:
+          type: string
+          description: Human-readable name of the source
+          example: My Source
+        identifier:
+          type: string
+          description: Unique identifier for the source (reverse-domain format recommended)
+          example: com.example.source
+        apps:
+          type: array
+          description: List of apps in this source
+          items:
+            $ref: '#/components/schemas/App'
+          default: []
+
+    App:
+      type: object
+      description: Application object containing app metadata and versions.
+      required:
+        - name
+        - bundleIdentifier
+        - developerName
+      properties:
+        name:
+          type: string
+          description: Human-readable name of the app
+          example: My App
+        bundleIdentifier:
+          type: string
+          description: |
+            Unique bundle identifier for the app (immutable after creation).
+            Reverse-domain format recommended (e.g., com.example.app).
+          example: com.example.app
+        developerName:
+          type: string
+          description: Name of the app developer
+          example: Example Dev
+        subtitle:
+          type: string
+          nullable: true
+          description: Optional subtitle or tagline for the app
+          example: A cool app
+        iconURL:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to the app's icon image
+          example: https://example.com/icon.png
+        versions:
+          type: array
+          description: List of versions for this app
+          items:
+            $ref: '#/components/schemas/AppVersion'
+          default: []
+
+    AppVersion:
+      type: object
+      description: Specific version of an application.
+      required:
+        - version
+        - date
+        - downloadURL
+      properties:
+        version:
+          type: string
+          description: |
+            Semantic version string (immutable after creation).
+            Format: MAJOR.MINOR.PATCH (e.g., 1.0.0)
+          example: '1.0.0'
+        date:
+          type: string
+          format: date
+          description: Release date in ISO 8601 format (YYYY-MM-DD)
+          example: '2025-01-01'
+        localizedDescription:
+          type: string
+          nullable: true
+          description: Release notes or description for this version
+          example: Initial release
+        downloadURL:
+          type: string
+          format: uri
+          description: Direct download URL for the IPA file
+          example: https://example.com/MyApp-1.0.0.ipa
+        size:
+          type: integer
+          format: int64
+          nullable: true
+          description: Size of the IPA file in bytes
+          example: 50000000
+        minOSVersion:
+          type: string
+          nullable: true
+          description: Minimum iOS version required (e.g., "14.0")
+          example: '14.0'
+        sha256:
+          type: string
+          nullable: true
+          description: SHA256 checksum of the IPA file (64 hex characters)
+          example: abc123def456...
+
+    CreateAppRequest:
+      type: object
+      description: Request body for creating a new app.
+      required:
+        - name
+        - bundleIdentifier
+        - developerName
+      properties:
+        name:
+          type: string
+          description: Human-readable name of the app
+          minLength: 1
+          example: My App
+        bundleIdentifier:
+          type: string
+          description: |
+            Unique bundle identifier for the app.
+            Reverse-domain format recommended (e.g., com.example.app).
+          minLength: 1
+          example: com.example.app
+        developerName:
+          type: string
+          description: Name of the app developer
+          minLength: 1
+          example: Example Dev
+        subtitle:
+          type: string
+          nullable: true
+          description: Optional subtitle or tagline for the app
+          example: A cool app
+        iconURL:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to the app's icon image
+          example: https://example.com/icon.png
+
+    UpdateAppRequest:
+      type: object
+      description: Request body for updating an app. All fields are optional.
+      properties:
+        name:
+          type: string
+          description: Human-readable name of the app
+          minLength: 1
+          example: Updated App Name
+        developerName:
+          type: string
+          description: Name of the app developer
+          minLength: 1
+          example: New Developer
+        subtitle:
+          type: string
+          nullable: true
+          description: Optional subtitle or tagline for the app
+          example: Updated subtitle
+        iconURL:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to the app's icon image
+          example: https://example.com/new-icon.png
+
+    CreateVersionRequest:
+      type: object
+      description: Request body for creating a new app version.
+      required:
+        - version
+        - date
+        - downloadURL
+      properties:
+        version:
+          type: string
+          description: |
+            Semantic version string.
+            Format: MAJOR.MINOR.PATCH (e.g., 1.0.0)
+          minLength: 1
+          example: '1.0.0'
+        date:
+          type: string
+          format: date
+          description: Release date in ISO 8601 format (YYYY-MM-DD)
+          example: '2025-01-01'
+        localizedDescription:
+          type: string
+          nullable: true
+          description: Release notes or description for this version
+          example: Initial release
+        downloadURL:
+          type: string
+          format: uri
+          description: Direct download URL for the IPA file
+          example: https://example.com/MyApp-1.0.0.ipa
+        size:
+          type: integer
+          format: int64
+          nullable: true
+          description: Size of the IPA file in bytes
+          minimum: 0
+          example: 50000000
+        minOSVersion:
+          type: string
+          nullable: true
+          description: Minimum iOS version required (e.g., "14.0")
+          example: '14.0'
+        sha256:
+          type: string
+          nullable: true
+          description: |
+            SHA256 checksum of the IPA file.
+            Must be 64 hexadecimal characters if provided.
+          pattern: '^[a-fA-F0-9]{64}$'
+          example: abc123def456...
+
+    UpdateVersionRequest:
+      type: object
+      description: |
+        Request body for updating an app version. All fields are optional.
+        The version string cannot be changed.
+      properties:
+        date:
+          type: string
+          format: date
+          description: Release date in ISO 8601 format (YYYY-MM-DD)
+          example: '2025-01-02'
+        localizedDescription:
+          type: string
+          nullable: true
+          description: Release notes or description for this version
+          example: Updated release notes
+        downloadURL:
+          type: string
+          format: uri
+          description: Direct download URL for the IPA file
+          example: https://example.com/MyApp-1.0.0.ipa
+        size:
+          type: integer
+          format: int64
+          nullable: true
+          description: Size of the IPA file in bytes
+          minimum: 0
+          example: 51000000
+        minOSVersion:
+          type: string
+          nullable: true
+          description: Minimum iOS version required (e.g., "14.0")
+          example: '14.0'
+        sha256:
+          type: string
+          nullable: true
+          description: |
+            SHA256 checksum of the IPA file.
+            Must be 64 hexadecimal characters if provided.
+          pattern: '^[a-fA-F0-9]{64}$'
+          example: def456abc123...
+
+    Error:
+      type: object
+      description: Standard error response object.
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type or category
+          example: Validation failed
+        message:
+          type: string
+          description: Human-readable error message
+          example: bundleIdentifier is required
+        details:
+          type: string
+          nullable: true
+          description: Additional context or details about the error
+          example: null

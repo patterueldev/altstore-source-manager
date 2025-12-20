@@ -7,6 +7,7 @@ plugins {
 
 java {
     toolchain {
+        // Prefer JDK 17 for broad compatibility; Gradle will auto-provision via settings repositories
         languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
