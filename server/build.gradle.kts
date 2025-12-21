@@ -7,8 +7,8 @@ plugins {
 
 java {
     toolchain {
-        // Prefer JDK 17 for broad compatibility; Gradle will auto-provision via settings repositories
-        languageVersion.set(JavaLanguageVersion.of(17))
+        // Prefer JDK 21 for broad compatibility; Gradle will auto-provision via settings repositories
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
@@ -29,5 +29,5 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 }

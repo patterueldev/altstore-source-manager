@@ -12,7 +12,7 @@ The server project lives under `server/` and exposes:
 - `GET /health` — simple health check
 - `GET /source.json` — returns a sample AltStore Source JSON
 
-Run locally (requires JDK 17 and Gradle):
+Run locally (requires JDK 21 and Gradle):
 
 ```
 cd server
