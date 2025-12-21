@@ -8,22 +8,30 @@ See SETUP.md for environment setup.
 
 ### Server (Gradle Spring Boot)
 
-The server project lives under `server/` and exposes:
+The server project lives under `apps/server/` and exposes:
 - `GET /health` — simple health check
 - `GET /source.json` — returns a sample AltStore Source JSON
 
 Run locally (requires JDK 17 and Gradle):
 
 ```
-cd server
+cd apps/server
 gradle bootRun
 ```
 
 Run tests:
 
 ```
-cd server
+cd apps/server
 gradle test
+```
+
+Or use Nx:
+
+```
+nx run server:build
+nx run server:test
+nx run server:serve
 ```
 
 Notes:

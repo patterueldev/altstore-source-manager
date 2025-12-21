@@ -24,7 +24,8 @@
 - Prefer small PRs: backend scaffold → core CRUD → source JSON generation → UI.
 - Store generated source JSON under a clear route (e.g., `/source.json`) and keep server-side schema validation close to the generator.
 - Use clear domain naming: `App`, `Version`, `Build`, `Source` for entities/paths.
- - Commit behavior: Do not auto-commit changes unless the user explicitly requests it. Default to leaving changes staged/uncommitted for short periods as directed.
+- Commit behavior: Do not auto-commit changes unless the user explicitly requests it. Default to leaving changes staged/uncommitted for short periods as directed.
+- All backend server code lives in `apps/server/`; use this path consistently in commands and documentation.
 
 ## Commit & Pull Request Conventions
 Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/#specification) for all commits and PR titles:
