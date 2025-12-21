@@ -1,0 +1,62 @@
+{
+  "nodes": {
+    "server": {
+      "name": "server",
+      "type": "app",
+      "data": {
+        "root": "apps/server",
+        "name": "server",
+        "projectType": "application",
+        "sourceRoot": "apps/server/src",
+        "tags": [
+          "backend",
+          "kotlin",
+          "spring"
+        ],
+        "targets": {
+          "build": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/server",
+              "command": "gradle build"
+            },
+            "outputs": [
+              "apps/server/build"
+            ],
+            "configurations": {},
+            "parallelism": true
+          },
+          "serve": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/server",
+              "command": "gradle bootRun"
+            },
+            "dependsOn": [
+              "build"
+            ],
+            "configurations": {},
+            "parallelism": true
+          },
+          "test": {
+            "executor": "nx:run-commands",
+            "options": {
+              "cwd": "apps/server",
+              "command": "gradle test"
+            },
+            "configurations": {},
+            "parallelism": true
+          }
+        },
+        "implicitDependencies": []
+      }
+    }
+  },
+  "externalNodes": {},
+  "dependencies": {
+    "server": []
+  },
+  "version": "6.0",
+  "errors": [],
+  "computedAt": 1766317400575
+}
