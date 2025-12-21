@@ -32,26 +32,26 @@ jobs:
             chore
             revert
           requireScope: false
-          # Scopes not enforced - issue reference goes in PR body (Closes #issue)
-          # GitHub automatically adds PR number on merge: <type>: <description> (#pr)
-          headerPattern: '^(\w+): (.+)$'
+          # Format: <type>: #<issue> [<Platform> - ] <description>
+          # Platform is optional but preferred for multi-component projects
+          headerPattern: '^(\w+): #\d+(?: \[.+? - \])? (.+)$'
           headerPatternCorrespondence: type, subject
           subjectPattern: ^[A-Z].+[^.]$
           subjectPatternError: |
-            PR title must follow: <type>: <Description>
+            PR title must follow: <type>: #<issue> [<Platform> - ] <Description>
+            - Issue number required: #123
+            - Platform optional but preferred: [Backend - ], [iOS - ], [Mobile - ]
             - Start description with capital letter
             - No period at end
             - Use imperative mood ("Add" not "Added")
-            - NO issue number in title (use "Closes #issue" in body instead)
             
             Examples:
-            - feat: Add user authentication (#11)
-            - fix: Resolve camera permissions (#5)
-            - docs: Add API documentation (#8)
+            - feat: #42 Add user authentication
+            - fix: #67 iOS - Fix camera permissions
+            - docs: #15 Backend - Add API documentation
+            - refactor: #88 Mobile - Simplify state management
             
             Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
-            
-            Note: Issue reference (#number) is required in parentheses at the end.
 
   # Validate branch name format
   validate-branch-name:

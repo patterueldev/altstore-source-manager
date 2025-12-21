@@ -43,6 +43,7 @@ Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0
 - `build`: Changes to build system or dependencies
 - `ci`: Changes to CI configuration files and scripts
 - `chore`: Other changes that don't modify src or test files
+- `revert`: Reverts a previous commit
 
 **Breaking Changes**: Append `!` after type/scope (e.g., `feat!: remove legacy API`) or include `BREAKING CHANGE:` footer.
 
@@ -52,9 +53,28 @@ Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0
 - `docs: update installation steps in README`
 - `refactor(ui)!: migrate to new component library`
 
-**PR Titles**: Use the same format; squash commits with conventional title on merge.
+**PR Titles**: 
+- Format: `<type>: #<issue> [<Platform> - ] <Description>`
+- Issue number required: `#123`
+- Platform optional but preferred for multi-component projects: `[Backend - ]`, `[iOS - ]`, `[Mobile - ]`
+- Start description with capital letter
+- No period at end
+- Use imperative mood ("Add" not "Added")
+- Examples:
+  - `feat: #42 Add user authentication`
+  - `fix: #67 iOS - Fix camera permissions`
+  - `docs: #15 Backend - Add API documentation`
+  - `refactor: #88 Mobile - Simplify state management`
 
-**Branch Naming**: Create branches using the format `<type>/#<issue-number>-<short-description>` (e.g., `chore/#1-initial-setup`, `feat/#5-app-crud`). The `#` precedes the issue number directly.
+**Branch Naming**: 
+- Format: `<type>/#<issue-number>-<description>`
+- Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `build`, `ci`, `perf`, `revert`, `release`
+- Description: lowercase, dashed (kebab-case)
+- The `#` precedes the issue number directly
+- Examples:
+  - `chore/#1-initial-setup`
+  - `feat/#5-app-crud`
+  - `release/#69-v0.1.3`
 
 **PR Template**: Use [.github/pull_request_template.md](.github/pull_request_template.md) as a guide when creating pull requests. The template includes Conventional Commits format guidance, type checklist, and standard sections for description, testing, and related issues.
 
