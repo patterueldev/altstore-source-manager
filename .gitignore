@@ -110,3 +110,7 @@ obj/
 tmp/
 temp/
 *.tmp
+
+.nx/installation
+.nx/cache
+.nx/workspace-data
