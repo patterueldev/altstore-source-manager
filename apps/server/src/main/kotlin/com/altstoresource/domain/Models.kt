@@ -25,7 +25,7 @@ data class AppVersion(
     val version: String,
     val date: LocalDate,
     val localizedDescription: String? = null,
-    val downloadURL: String,
+    val downloadURL: String? = null,
     val size: Long? = null,
     val minOSVersion: String? = null,
     val sha256: String? = null

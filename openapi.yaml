@@ -19,10 +19,12 @@ servers:
 tags:
   - name: Health
     description: System health and status endpoints
-  - name: Public
-    description: Public endpoints for app distribution
-  - name: Admin
-    description: Administrative endpoints (requires authorization)
+  - name: Public Sources
+    description: Public endpoints for app distribution (no auth required)
+  - name: Platform Admin
+    description: Platform-level superadmin endpoints (superadmin only)
+  - name: Source Admin
+    description: Source-scoped admin endpoints (source admin only)
 
 paths:
   /health:
@@ -46,18 +48,27 @@ paths:
               example:
                 status: ok
 
-  /source.json:
+  /sources/{sourceId}:
     get:
       tags:
-        - Public
-      summary: Get AltStore Source JSON
+        - Public Sources
+      summary: Get AltStore Source
       description: |
-        Returns the current AltStore source JSON. This is the public-facing endpoint 
-        for app distribution. The source is auto-generated from the current app and version data.
-      operationId: getSourceJson
+        Returns the AltStore source data for a specific source. 
+        This is the public-facing endpoint for app distribution.
+        Includes presigned download URLs for IPA files.
+      operationId: getSource
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
       responses:
         '200':
-          description: AltStore source JSON
+          description: AltStore source JSON with presigned URLs
           content:
             application/json:
               schema:
@@ -75,23 +86,31 @@ paths:
                       - version: 1.0.0
                         date: '2025-01-01'
                         localizedDescription: Initial release
-                        downloadURL: https://example.com/MyApp-1.0.0.ipa
+                        downloadURL: https://s3.example.com/bucket/com.example.app/1.0.0.ipa?X-Amz-Algorithm=AWS4-HMAC-SHA256&...
                         size: 50000000
                         minOSVersion: '14.0'
                         sha256: abc123def456...
 
-  /apps:
+  /sources/{sourceId}/apps:
     get:
       tags:
-        - Public
-      summary: List All Apps (JSON)
+        - Public Sources
+      summary: List All Apps
       description: |
-        Retrieve all apps as JSON. This endpoint provides structured app metadata 
-        for programmatic access to the app catalog.
-      operationId: listAppsJson
+        Retrieve all apps for a source as JSON with presigned download URLs.
+        No authentication required.
+      operationId: listAppsForSource
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
       responses:
         '200':
-          description: List of all apps
+          description: List of all apps with presigned URLs
           content:
             application/json:
               schema:
@@ -104,26 +123,38 @@ paths:
                   developerName: Dev 1
                   subtitle: First app
                   iconURL: https://example.com/icon1.png
-                  versions: []
-                - name: App 2
-                  bundleIdentifier: com.example.app2
-                  developerName: Dev 2
-                  versions: []
+                  versions:
+                    - version: '1.0.0'
+                      downloadURL: https://s3.example.com/bucket/com.example.app1/1.0.0.ipa?X-Amz-...
+        '404':
+          description: Source not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: Source 'invalid' not found
 
-  /apps/{bundleIdentifier}/{version}:
+  /sources/{sourceId}/apps/{bundleId}/{version}:
     get:
       tags:
-        - Public
-      summary: Download App IPA
-      description: |
-        Download the IPA file for a specific app version.
-        Retrieves the binary from MinIO/S3 storage.
-      operationId: downloadAppIpa
+        - Public Sources
+      summary: Get App Version Details
+      description: Retrieve details for a specific app version including presigned download URL.
+      operationId: getAppVersion
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The unique bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
@@ -136,32 +167,364 @@ paths:
           example: '1.0.0'
       responses:
         '200':
-          description: IPA file download
+          description: App version details with presigned URL
           content:
-            application/octet-stream:
+            application/json:
               schema:
-                type: string
-                format: binary
+                $ref: '#/components/schemas/AppVersion'
+              example:
+                version: '1.0.0'
+                date: '2025-01-01'
+                localizedDescription: Initial release
+                downloadURL: https://s3.example.com/bucket/com.example.app/1.0.0.ipa?X-Amz-Algorithm=AWS4-HMAC-SHA256&...
+                size: 50000000
+                minOSVersion: '14.0'
+                sha256: abc123def456...
         '404':
-          description: App or version not found
+          description: Source, app, or version not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
                 error: Not Found
-                message: App or version not found
+                message: Version '1.0.0' not found for app 'com.example.app' in source 'default'
 
-  /admin/apps:
+  /admin/sources:
     get:
       tags:
-        - Admin
-      summary: List All Apps (Admin)
-      description: |
-        Retrieve all apps for management purposes. Requires authorization.
+        - Platform Admin
+      summary: List All Sources
+      description: List all sources (superadmin only).
+      operationId: listSources
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of all sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Source'
+        '401':
+          description: Unauthorized (superadmin role required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Superadmin role required
+
+    post:
+      tags:
+        - Platform Admin
+      summary: Create Source
+      description: Create a new source with storage configuration (superadmin only).
+      operationId: createSource
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSourceRequest'
+            example:
+              name: My Source
+              storageConfig:
+                type: minio
+                endpoint: http://minio:9000
+                bucketIpas: ipas
+                bucketIcons: icons
+                accessKeyId: devadmin
+                secretAccessKey: devsecret
+      responses:
+        '201':
+          description: Source created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized (superadmin role required)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/sources/{sourceId}:
+    get:
+      tags:
+        - Platform Admin
+      summary: Get Source Details
+      description: Retrieve a specific source (superadmin only).
+      operationId: getSourceAdmin
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+      responses:
+        '200':
+          description: Source found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Source not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Platform Admin
+      summary: Update Source
+      description: Update source metadata and storage configuration (superadmin only).
+      operationId: updateSource
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSourceRequest'
+      responses:
+        '200':
+          description: Source updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Source not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Platform Admin
+      summary: Delete Source
+      description: Delete a source and all associated data (superadmin only).
+      operationId: deleteSource
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+      responses:
+        '204':
+          description: Source deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Source not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/users:
+    get:
+      tags:
+        - Platform Admin
+      summary: List All Users
+      description: List all users (superadmin only).
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Platform Admin
+      summary: Create User
+      description: Create a new user (superadmin only).
+      operationId: createUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/memberships:
+    post:
+      tags:
+        - Platform Admin
+      summary: Assign User to Source
+      description: Assign a user to a source with specific roles (superadmin only).
+      operationId: assignUserToSource
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMembershipRequest'
+            example:
+              userId: user123
+              sourceId: default
+              roles:
+                - sourceAdmin
+      responses:
+        '201':
+          description: User assigned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SourceMembership'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: User already assigned to source
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Platform Admin
+      summary: Remove User from Source
+      description: Remove a user from a source (superadmin only).
+      operationId: removeUserFromSource
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          description: The user ID
+          schema:
+            type: string
+        - name: sourceId
+          in: query
+          required: true
+          description: The source ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: User removed successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Membership not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/sources/{sourceId}/apps:
+    get:
+      tags:
+        - Source Admin
+      summary: List Apps (Admin)
+      description: List all apps for a source (source admin only).
       operationId: listAppsAdmin
       security:
         - bearerAuth: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
       responses:
         '200':
           description: List of all apps
@@ -171,35 +534,35 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/App'
-              example:
-                - name: App 1
-                  bundleIdentifier: com.example.app1
-                  developerName: Dev 1
-                  subtitle: First app
-                  iconURL: https://example.com/icon1.png
-                  versions: []
-                - name: App 2
-                  bundleIdentifier: com.example.app2
-                  developerName: Dev 2
-                  versions: []
         '401':
-          description: Unauthorized
+          description: Unauthorized (source admin role required)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
+        '404':
+          description: Source not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     post:
       tags:
-        - Admin
+        - Source Admin
       summary: Create App
-      description: Create a new app in the source. Requires authorization.
+      description: Create a new app in a source (source admin only).
       operationId: createApp
       security:
         - bearerAuth: []
+      parameters:
+        - name: sourceId
+          in: path
+          required: true
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
       requestBody:
         required: true
         content:
@@ -219,56 +582,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/App'
-              example:
-                name: My App
-                bundleIdentifier: com.example.app
-                developerName: Example Dev
-                subtitle: A cool app
-                iconURL: https://example.com/icon.png
-                versions: []
         '400':
-          description: Invalid request (validation failed)
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Validation failed
-                message: bundleIdentifier is required
-                details: null
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '409':
-          description: App already exists (duplicate bundleIdentifier)
+          description: App already exists in this source
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Conflict
-                message: App with bundleIdentifier 'com.example.app' already exists
 
-  /admin/apps/{bundleIdentifier}:
+  /admin/sources/{sourceId}/apps/{bundleId}:
     get:
       tags:
-        - Admin
-      summary: Get App by Bundle Identifier (Admin)
-      description: Retrieve a specific app by its bundle identifier. Requires authorization.
+        - Source Admin
+      summary: Get App (Admin)
+      description: Retrieve app details (source admin only).
       operationId: getAppAdmin
       security:
         - bearerAuth: []
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The unique bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
@@ -279,48 +632,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/App'
-              example:
-                name: My App
-                bundleIdentifier: com.example.app
-                developerName: Example Dev
-                subtitle: A cool app
-                iconURL: https://example.com/icon.png
-                versions: []
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '404':
           description: App not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Not Found
-                message: App with bundleIdentifier 'com.example.notfound' not found
 
     put:
       tags:
-        - Admin
+        - Source Admin
       summary: Update App
-      description: |
-        Update an existing app's metadata. Does not modify versions.
-        Only provided fields are updated; omitted fields are left unchanged.
-        Requires authorization.
+      description: Update app metadata (source admin only).
       operationId: updateApp
       security:
         - bearerAuth: []
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The unique bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
@@ -330,11 +674,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UpdateAppRequest'
-            example:
-              name: Updated App Name
-              developerName: New Developer
-              subtitle: Updated subtitle
-              iconURL: https://example.com/new-icon.png
       responses:
         '200':
           description: App updated successfully
@@ -342,47 +681,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/App'
-              example:
-                name: Updated App Name
-                bundleIdentifier: com.example.app
-                developerName: New Developer
-                subtitle: Updated subtitle
-                iconURL: https://example.com/new-icon.png
-                versions: []
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '404':
           description: App not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Not Found
-                message: App with bundleIdentifier 'com.example.notfound' not found
 
     delete:
       tags:
-        - Admin
+        - Source Admin
       summary: Delete App
-      description: |
-        Delete an app and all its versions. This operation cascades 
-        and removes all associated version data. Requires authorization.
+      description: Delete an app and all its versions (source admin only).
       operationId: deleteApp
       security:
         - bearerAuth: []
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The unique bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
@@ -395,88 +726,79 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '404':
           description: App not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Not Found
-                message: App with bundleIdentifier 'com.example.notfound' not found
 
-  /admin/apps/{bundleIdentifier}/versions:
+  /admin/sources/{sourceId}/apps/{bundleId}/versions:
     get:
       tags:
-        - Admin
-      summary: List Versions for App
-      description: Retrieve all versions for a specific app. Requires authorization.
-      operationId: listVersions
+        - Source Admin
+      summary: List Versions (Admin)
+      description: List all versions for an app (source admin only).
+      operationId: listVersionsAdmin
       security:
         - bearerAuth: []
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
       responses:
         '200':
-          description: List of all versions for the app
+          description: List of versions
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/AppVersion'
-              example:
-                - version: '1.0.0'
-                  date: '2025-01-01'
-                  localizedDescription: Initial release
-                  downloadURL: https://example.com/MyApp-1.0.0.ipa
-                  size: 50000000
-                  minOSVersion: '14.0'
-                  sha256: abc123def456...
-                - version: '1.1.0'
-                  date: '2025-01-15'
-                  downloadURL: https://example.com/MyApp-1.1.0.ipa
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '404':
           description: App not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Not Found
-                message: App with bundleIdentifier 'com.example.notfound' not found
 
     post:
       tags:
-        - Admin
+        - Source Admin
       summary: Create Version
-      description: Create a new version for an app. Requires authorization.
+      description: Create a new version for an app (source admin only). Presigned URL is generated server-side.
       operationId: createVersion
       security:
         - bearerAuth: []
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
@@ -490,76 +812,68 @@ paths:
               version: '1.0.0'
               date: '2025-01-01'
               localizedDescription: Initial release
-              downloadURL: https://example.com/MyApp-1.0.0.ipa
-              size: 50000000
               minOSVersion: '14.0'
               sha256: abc123def456...
       responses:
         '201':
-          description: Version created successfully
+          description: Version created; presigned upload URL included for IPA
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AppVersion'
+                $ref: '#/components/schemas/CreateVersionResponse'
               example:
                 version: '1.0.0'
                 date: '2025-01-01'
                 localizedDescription: Initial release
-                downloadURL: https://example.com/MyApp-1.0.0.ipa
-                size: 50000000
+                uploadURL: https://s3.example.com/bucket/com.example.app/1.0.0.ipa?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...&X-Amz-Expires=3600&...
                 minOSVersion: '14.0'
                 sha256: abc123def456...
         '400':
-          description: Invalid request (validation failed)
+          description: Invalid request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Validation failed
-                message: version is required
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '404':
           description: App not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Not Found
-                message: App with bundleIdentifier 'com.example.notfound' not found
         '409':
-          description: Version already exists for this app
+          description: Version already exists
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Conflict
-                message: Version '1.0.0' already exists for app 'com.example.app'
 
-  /admin/apps/{bundleIdentifier}/versions/{version}:
+  /admin/sources/{sourceId}/apps/{bundleId}/versions/{version}:
     get:
       tags:
-        - Admin
-      summary: Get Specific Version
-      description: Retrieve a specific version of an app. Requires authorization.
-      operationId: getVersion
+        - Source Admin
+      summary: Get Version (Admin)
+      description: Retrieve version details (source admin only).
+      operationId: getVersionAdmin
       security:
         - bearerAuth: []
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
@@ -577,49 +891,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AppVersion'
-              example:
-                version: '1.0.0'
-                date: '2025-01-01'
-                localizedDescription: Initial release
-                downloadURL: https://example.com/MyApp-1.0.0.ipa
-                size: 50000000
-                minOSVersion: '14.0'
-                sha256: abc123def456...
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '404':
-          description: App or version not found
+          description: Version not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Not Found
-                message: Version '1.0.0' not found for app 'com.example.app'
 
     put:
       tags:
-        - Admin
+        - Source Admin
       summary: Update Version
-      description: |
-        Update an existing version. Only provided fields are updated; 
-        omitted fields are left unchanged. The version string cannot be changed.
-        Requires authorization.
+      description: Update version metadata (source admin only).
       operationId: updateVersion
       security:
         - bearerAuth: []
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
@@ -636,13 +940,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UpdateVersionRequest'
-            example:
-              date: '2025-01-02'
-              localizedDescription: Updated release notes
-              downloadURL: https://example.com/MyApp-1.0.0.ipa
-              size: 51000000
-              minOSVersion: '14.0'
-              sha256: def456abc123...
       responses:
         '200':
           description: Version updated successfully
@@ -650,46 +947,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AppVersion'
-              example:
-                version: '1.0.0'
-                date: '2025-01-02'
-                localizedDescription: Updated release notes
-                downloadURL: https://example.com/MyApp-1.0.0.ipa
-                size: 51000000
-                minOSVersion: '14.0'
-                sha256: def456abc123...
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '404':
-          description: App or version not found
+          description: Version not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Not Found
-                message: Version '1.0.0' not found for app 'com.example.app'
 
     delete:
       tags:
-        - Admin
+        - Source Admin
       summary: Delete Version
-      description: Delete a specific version from an app. Requires authorization.
+      description: Delete a version (source admin only).
       operationId: deleteVersion
       security:
         - bearerAuth: []
       parameters:
-        - name: bundleIdentifier
+        - name: sourceId
           in: path
           required: true
-          description: The bundle identifier of the app
+          description: The unique source identifier
+          schema:
+            type: string
+          example: default
+        - name: bundleId
+          in: path
+          required: true
+          description: The app bundle identifier
           schema:
             type: string
           example: com.example.app
@@ -709,18 +999,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Unauthorized
-                message: Authentication required
         '404':
-          description: App or version not found
+          description: Version not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-              example:
-                error: Not Found
-                message: Version '1.0.0' not found for app 'com.example.app'
 
 components:
   securitySchemes:
@@ -728,9 +1012,240 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Bearer token for authorization to admin endpoints
+      description: Bearer token with roles claim for authorization
 
   schemas:
+    Source:
+      type: object
+      description: AltStore source with metadata and storage configuration.
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique source identifier
+          example: default
+        name:
+          type: string
+          description: Human-readable name of the source
+          example: My Source
+        identifier:
+          type: string
+          nullable: true
+          description: Optional reverse-domain identifier for AltStore
+          example: com.example.source
+        storageConfig:
+          $ref: '#/components/schemas/StorageConfig'
+        status:
+          type: string
+          enum: [active, inactive]
+          description: Source status
+          example: active
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Last update timestamp
+
+    StorageConfig:
+      type: object
+      description: Storage backend configuration for a source.
+      required:
+        - type
+        - endpoint
+        - bucketIpas
+        - bucketIcons
+        - accessKeyId
+        - secretAccessKey
+      properties:
+        type:
+          type: string
+          enum: [minio, s3]
+          description: Storage backend type
+          example: minio
+        endpoint:
+          type: string
+          format: uri
+          description: S3/MinIO endpoint URL
+          example: http://minio:9000
+        region:
+          type: string
+          nullable: true
+          description: AWS region (for S3)
+          example: us-east-1
+        bucketIpas:
+          type: string
+          description: Bucket name for IPA files
+          example: ipas
+        bucketIcons:
+          type: string
+          description: Bucket name for app icons
+          example: icons
+        accessKeyId:
+          type: string
+          description: Access key ID (stored encrypted)
+        secretAccessKey:
+          type: string
+          description: Secret access key (stored encrypted)
+
+    User:
+      type: object
+      description: Platform user.
+      required:
+        - id
+        - email
+      properties:
+        id:
+          type: string
+          description: Unique user identifier
+        email:
+          type: string
+          format: email
+          description: User email address
+        provider:
+          type: string
+          nullable: true
+          description: OAuth provider if external (e.g., google, github)
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [superadmin, user]
+          description: Global user roles
+          example: [user]
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+
+    SourceMembership:
+      type: object
+      description: User membership in a source with roles.
+      required:
+        - sourceId
+        - userId
+        - roles
+      properties:
+        sourceId:
+          type: string
+          description: Source identifier
+          example: default
+        userId:
+          type: string
+          description: User identifier
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [sourceAdmin, sourceUser]
+          description: Roles within the source
+          example: [sourceAdmin]
+
+    CreateSourceRequest:
+      type: object
+      required:
+        - name
+        - storageConfig
+      properties:
+        name:
+          type: string
+          description: Human-readable source name
+          minLength: 1
+        identifier:
+          type: string
+          nullable: true
+          description: Optional reverse-domain identifier
+        storageConfig:
+          $ref: '#/components/schemas/StorageConfig'
+
+    UpdateSourceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Updated source name
+          minLength: 1
+        identifier:
+          type: string
+          nullable: true
+          description: Updated identifier
+        storageConfig:
+          $ref: '#/components/schemas/StorageConfig'
+        status:
+          type: string
+          enum: [active, inactive]
+
+    CreateUserRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User email
+        password:
+          type: string
+          format: password
+          description: User password (hashed server-side)
+          minLength: 8
+
+    CreateMembershipRequest:
+      type: object
+      required:
+        - userId
+        - sourceId
+        - roles
+      properties:
+        userId:
+          type: string
+          description: User ID to assign
+        sourceId:
+          type: string
+          description: Source ID
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [sourceAdmin, sourceUser]
+          description: Roles within the source
+          minItems: 1
+
+    CreateVersionResponse:
+      type: object
+      description: Response after creating a version; includes presigned upload URL.
+      required:
+        - version
+        - uploadURL
+      properties:
+        version:
+          type: string
+          description: Semantic version
+        uploadURL:
+          type: string
+          format: uri
+          description: Presigned S3/MinIO URL for uploading IPA file (expires in 1 hour)
+        date:
+          type: string
+          format: date
+          description: Release date
+        localizedDescription:
+          type: string
+          nullable: true
+          description: Release notes
+        minOSVersion:
+          type: string
+          nullable: true
+        sha256:
+          type: string
+          nullable: true
+
     AppPublic:
       type: object
       description: Public application object for distribution (without sensitive metadata).
@@ -835,11 +1350,10 @@ components:
 
     AppVersion:
       type: object
-      description: Specific version of an application.
+      description: Specific version of an application with presigned download URL.
       required:
         - version
         - date
-        - downloadURL
       properties:
         version:
           type: string
@@ -860,8 +1374,9 @@ components:
         downloadURL:
           type: string
           format: uri
-          description: Direct download URL for the IPA file
-          example: https://example.com/MyApp-1.0.0.ipa
+          nullable: true
+          description: Presigned S3/MinIO URL for IPA file download (auto-generated on creation)
+          example: https://s3.example.com/bucket/com.example.app/1.0.0.ipa?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...&X-Amz-Expires=3600&...
         size:
           type: integer
           format: int64
@@ -944,11 +1459,10 @@ components:
 
     CreateVersionRequest:
       type: object
-      description: Request body for creating a new app version.
+      description: Request body for creating a new app version. Presigned upload URL is generated by the server.
       required:
         - version
         - date
-        - downloadURL
       properties:
         version:
           type: string
@@ -967,11 +1481,6 @@ components:
           nullable: true
           description: Release notes or description for this version
           example: Initial release
-        downloadURL:
-          type: string
-          format: uri
-          description: Direct download URL for the IPA file
-          example: https://example.com/MyApp-1.0.0.ipa
         size:
           type: integer
           format: int64
@@ -1009,11 +1518,6 @@ components:
           nullable: true
           description: Release notes or description for this version
           example: Updated release notes
-        downloadURL:
-          type: string
-          format: uri
-          description: Direct download URL for the IPA file
-          example: https://example.com/MyApp-1.0.0.ipa
         size:
           type: integer
           format: int64

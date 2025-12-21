@@ -1,0 +1,151 @@
+{
+  "version": "6.0",
+  "nxVersion": "22.3.3",
+  "pathMappings": {},
+  "nxJsonPlugins": [],
+  "fileMap": {
+    "projectFileMap": {
+      "server": [
+        {
+          "file": "apps/server/.gitignore",
+          "hash": "10102652824456420421"
+        },
+        {
+          "file": "apps/server/build.gradle.kts",
+          "hash": "1078157407507295357"
+        },
+        {
+          "file": "apps/server/project.json",
+          "hash": "5855205711048388468"
+        },
+        {
+          "file": "apps/server/settings.gradle.kts",
+          "hash": "1253667387351016772"
+        },
+        {
+          "file": "apps/server/src/main/kotlin/com/altstoresource/AltstoreSourceManagerApplication.kt",
+          "hash": "46015405580317916"
+        },
+        {
+          "file": "apps/server/src/main/kotlin/com/altstoresource/api/SourceController.kt",
+          "hash": "13693914054084201092"
+        },
+        {
+          "file": "apps/server/src/main/kotlin/com/altstoresource/domain/Models.kt",
+          "hash": "12011688619309814457"
+        },
+        {
+          "file": "apps/server/src/main/resources/application.yml",
+          "hash": "1533622235887131541"
+        },
+        {
+          "file": "apps/server/src/main/resources/openapi.yaml",
+          "hash": "15289742145055171616"
+        },
+        {
+          "file": "apps/server/src/test/kotlin/com/altstoresource/api/SourceControllerTest.kt",
+          "hash": "5956428991623804826"
+        }
+      ]
+    },
+    "nonProjectFiles": [
+      {
+        "file": ".env.example",
+        "hash": "5696641185112880377"
+      },
+      {
+        "file": ".github/INFRASTRUCTURE.md",
+        "hash": "2908253826044494416"
+      },
+      {
+        "file": ".github/MVP.md",
+        "hash": "8278906505596428632"
+      },
+      {
+        "file": ".github/copilot-instructions.md",
+        "hash": "11635075677211702240"
+      },
+      {
+        "file": ".github/pull_request_template.md",
+        "hash": "5009563909243048780"
+      },
+      {
+        "file": ".gitignore",
+        "hash": "449118086827140247"
+      },
+      {
+        "file": ".nx/nxw.js",
+        "hash": "11301648124127104610"
+      },
+      {
+        "file": "README.md",
+        "hash": "3425970566792624169"
+      },
+      {
+        "file": "SETUP.md",
+        "hash": "15963686484654406013"
+      },
+      {
+        "file": "devbox.json",
+        "hash": "13397527963375140657"
+      },
+      {
+        "file": "devbox.lock",
+        "hash": "10546959152164387017"
+      },
+      {
+        "file": "docker-compose.yml",
+        "hash": "13985543945966012300"
+      },
+      {
+        "file": "docs/ARCHITECTURE.md",
+        "hash": "9820002001157755508"
+      },
+      {
+        "file": "docs/INFRASTRUCTURE.md",
+        "hash": "5578328853584482849"
+      },
+      {
+        "file": "docs/MVP.md",
+        "hash": "13539858610687593595"
+      },
+      {
+        "file": "docs/REQUIREMENTS.md",
+        "hash": "17841754850769556199"
+      },
+      {
+        "file": "docs/TECH_STACK.md",
+        "hash": "12054416970232927196"
+      },
+      {
+        "file": "gradle/libs.versions.toml",
+        "hash": "11224337743737336066"
+      },
+      {
+        "file": "nx",
+        "hash": "8108031838021157773"
+      },
+      {
+        "file": "nx.bat",
+        "hash": "16119536321561623970"
+      },
+      {
+        "file": "nx.json",
+        "hash": "5010774316659826914"
+      },
+      {
+        "file": "openapi.yaml",
+        "hash": "15289742145055171616"
+      },
+      {
+        "file": "scripts/detect-env.sh",
+        "hash": "542299603642247510"
+      },
+      {
+        "file": "scripts/init-mongo.js",
+        "hash": "4489474085259600552"
+      }
+    ]
+  },
+  "externalNodesHash": "3244421341483603138"
+}

@@ -99,6 +99,49 @@ devbox run test  # Verify setup
 docker-compose down
 ```
 
+### Build and Run the Server
+
+The backend server is a Spring Boot application located in `apps/server/`.
+
+**Build:**
+
+```bash
+cd apps/server
+gradle build
+```
+
+Or using Nx:
+
+```bash
+nx run server:build
+```
+
+**Run:**
+
+```bash
+cd apps/server
+gradle bootRun
+```
+
+Or using Nx:
+
+```bash
+nx run server:serve
+```
+
+**Test:**
+
+```bash
+cd apps/server
+gradle test
+```
+
+Or using Nx:
+
+```bash
+nx run server:test
+```
+
 ### View Service Logs
 
 ```bash
