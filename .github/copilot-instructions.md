@@ -131,6 +131,17 @@ apps/server/
   - `fix: #18 Correct JSON generation for app versions`
   - `test: #5 Add unit tests for SourceService`
 
+### ⚠️ CRITICAL: Commit Policy
+
+**DO NOT AUTO-COMMIT OR AUTO-PUSH.**
+
+- ❌ Never run `git commit` or `git push` unless the user **explicitly requests it**
+- ❌ Never commit within a time window (e.g., "within 30 mins") without explicit approval in **this conversation**
+- ✅ Default behavior: Make file edits, propose changes, but **always pause and ask for permission before committing**
+- ✅ When explicitly authorized: Use commit conventions above
+
+**Exception**: Only commit if the user says something like "go ahead and commit this" or "authorize 10 minutes to commit changes" in the current message.
+
 ---
 
 ## API Design
