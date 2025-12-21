@@ -19,12 +19,10 @@ servers:
 tags:
   - name: Health
     description: System health and status endpoints
-  - name: Source
-    description: Public AltStore source JSON endpoint
-  - name: Apps
-    description: Application CRUD operations
-  - name: Versions
-    description: Application version management
+  - name: Public
+    description: Public endpoints for app distribution
+  - name: Admin
+    description: Administrative endpoints (requires authorization)
 
 paths:
   /health:
@@ -51,7 +49,7 @@ paths:
   /source.json:
     get:
       tags:
-        - Source
+        - Public
       summary: Get AltStore Source JSON
       description: |
         Returns the current AltStore source JSON. This is the public-facing endpoint 
@@ -82,13 +80,88 @@ paths:
                         minOSVersion: '14.0'
                         sha256: abc123def456...
 
-  /api/apps:
+  /apps:
     get:
       tags:
-        - Apps
-      summary: List All Apps
-      description: Retrieve all apps in the source.
-      operationId: listApps
+        - Public
+      summary: List All Apps (JSON)
+      description: |
+        Retrieve all apps as JSON. This endpoint provides structured app metadata 
+        for programmatic access to the app catalog.
+      operationId: listAppsJson
+      responses:
+        '200':
+          description: List of all apps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AppPublic'
+              example:
+                - name: App 1
+                  bundleIdentifier: com.example.app1
+                  developerName: Dev 1
+                  subtitle: First app
+                  iconURL: https://example.com/icon1.png
+                  versions: []
+                - name: App 2
+                  bundleIdentifier: com.example.app2
+                  developerName: Dev 2
+                  versions: []
+
+  /apps/{bundleIdentifier}/{version}:
+    get:
+      tags:
+        - Public
+      summary: Download App IPA
+      description: |
+        Download the IPA file for a specific app version.
+        Retrieves the binary from MinIO/S3 storage.
+      operationId: downloadAppIpa
+      parameters:
+        - name: bundleIdentifier
+          in: path
+          required: true
+          description: The unique bundle identifier of the app
+          schema:
+            type: string
+          example: com.example.app
+        - name: version
+          in: path
+          required: true
+          description: The semantic version string
+          schema:
+            type: string
+          example: '1.0.0'
+      responses:
+        '200':
+          description: IPA file download
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: App or version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Not Found
+                message: App or version not found
+
+  /admin/apps:
+    get:
+      tags:
+        - Admin
+      summary: List All Apps (Admin)
+      description: |
+        Retrieve all apps for management purposes. Requires authorization.
+      operationId: listAppsAdmin
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: List of all apps
@@ -109,13 +182,24 @@ paths:
                   bundleIdentifier: com.example.app2
                   developerName: Dev 2
                   versions: []
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
 
     post:
       tags:
-        - Apps
+        - Admin
       summary: Create App
-      description: Create a new app in the source.
+      description: Create a new app in the source. Requires authorization.
       operationId: createApp
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -152,6 +236,15 @@ paths:
                 error: Validation failed
                 message: bundleIdentifier is required
                 details: null
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '409':
           description: App already exists (duplicate bundleIdentifier)
           content:
@@ -162,13 +255,15 @@ paths:
                 error: Conflict
                 message: App with bundleIdentifier 'com.example.app' already exists
 
-  /api/apps/{bundleIdentifier}:
+  /admin/apps/{bundleIdentifier}:
     get:
       tags:
-        - Apps
-      summary: Get App by Bundle Identifier
-      description: Retrieve a specific app by its bundle identifier.
-      operationId: getApp
+        - Admin
+      summary: Get App by Bundle Identifier (Admin)
+      description: Retrieve a specific app by its bundle identifier. Requires authorization.
+      operationId: getAppAdmin
+      security:
+        - bearerAuth: []
       parameters:
         - name: bundleIdentifier
           in: path
@@ -191,6 +286,15 @@ paths:
                 subtitle: A cool app
                 iconURL: https://example.com/icon.png
                 versions: []
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '404':
           description: App not found
           content:
@@ -203,12 +307,15 @@ paths:
 
     put:
       tags:
-        - Apps
+        - Admin
       summary: Update App
       description: |
         Update an existing app's metadata. Does not modify versions.
         Only provided fields are updated; omitted fields are left unchanged.
+        Requires authorization.
       operationId: updateApp
+      security:
+        - bearerAuth: []
       parameters:
         - name: bundleIdentifier
           in: path
@@ -242,6 +349,15 @@ paths:
                 subtitle: Updated subtitle
                 iconURL: https://example.com/new-icon.png
                 versions: []
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '404':
           description: App not found
           content:
@@ -254,12 +370,14 @@ paths:
 
     delete:
       tags:
-        - Apps
+        - Admin
       summary: Delete App
       description: |
         Delete an app and all its versions. This operation cascades 
-        and removes all associated version data.
+        and removes all associated version data. Requires authorization.
       operationId: deleteApp
+      security:
+        - bearerAuth: []
       parameters:
         - name: bundleIdentifier
           in: path
@@ -271,6 +389,15 @@ paths:
       responses:
         '204':
           description: App deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '404':
           description: App not found
           content:
@@ -281,13 +408,15 @@ paths:
                 error: Not Found
                 message: App with bundleIdentifier 'com.example.notfound' not found
 
-  /api/apps/{bundleIdentifier}/versions:
+  /admin/apps/{bundleIdentifier}/versions:
     get:
       tags:
-        - Versions
+        - Admin
       summary: List Versions for App
-      description: Retrieve all versions for a specific app.
+      description: Retrieve all versions for a specific app. Requires authorization.
       operationId: listVersions
+      security:
+        - bearerAuth: []
       parameters:
         - name: bundleIdentifier
           in: path
@@ -316,6 +445,15 @@ paths:
                 - version: '1.1.0'
                   date: '2025-01-15'
                   downloadURL: https://example.com/MyApp-1.1.0.ipa
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '404':
           description: App not found
           content:
@@ -328,10 +466,12 @@ paths:
 
     post:
       tags:
-        - Versions
+        - Admin
       summary: Create Version
-      description: Create a new version for an app.
+      description: Create a new version for an app. Requires authorization.
       operationId: createVersion
+      security:
+        - bearerAuth: []
       parameters:
         - name: bundleIdentifier
           in: path
@@ -378,6 +518,15 @@ paths:
               example:
                 error: Validation failed
                 message: version is required
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '404':
           description: App not found
           content:
@@ -397,13 +546,15 @@ paths:
                 error: Conflict
                 message: Version '1.0.0' already exists for app 'com.example.app'
 
-  /api/apps/{bundleIdentifier}/versions/{version}:
+  /admin/apps/{bundleIdentifier}/versions/{version}:
     get:
       tags:
-        - Versions
+        - Admin
       summary: Get Specific Version
-      description: Retrieve a specific version of an app.
+      description: Retrieve a specific version of an app. Requires authorization.
       operationId: getVersion
+      security:
+        - bearerAuth: []
       parameters:
         - name: bundleIdentifier
           in: path
@@ -434,6 +585,15 @@ paths:
                 size: 50000000
                 minOSVersion: '14.0'
                 sha256: abc123def456...
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '404':
           description: App or version not found
           content:
@@ -446,12 +606,15 @@ paths:
 
     put:
       tags:
-        - Versions
+        - Admin
       summary: Update Version
       description: |
         Update an existing version. Only provided fields are updated; 
         omitted fields are left unchanged. The version string cannot be changed.
+        Requires authorization.
       operationId: updateVersion
+      security:
+        - bearerAuth: []
       parameters:
         - name: bundleIdentifier
           in: path
@@ -495,6 +658,15 @@ paths:
                 size: 51000000
                 minOSVersion: '14.0'
                 sha256: def456abc123...
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '404':
           description: App or version not found
           content:
@@ -507,10 +679,12 @@ paths:
 
     delete:
       tags:
-        - Versions
+        - Admin
       summary: Delete Version
-      description: Delete a specific version from an app.
+      description: Delete a specific version from an app. Requires authorization.
       operationId: deleteVersion
+      security:
+        - bearerAuth: []
       parameters:
         - name: bundleIdentifier
           in: path
@@ -529,6 +703,15 @@ paths:
       responses:
         '204':
           description: Version deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                message: Authentication required
         '404':
           description: App or version not found
           content:
@@ -540,7 +723,54 @@ paths:
                 message: Version '1.0.0' not found for app 'com.example.app'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token for authorization to admin endpoints
+
   schemas:
+    AppPublic:
+      type: object
+      description: Public application object for distribution (without sensitive metadata).
+      required:
+        - name
+        - bundleIdentifier
+        - developerName
+      properties:
+        name:
+          type: string
+          description: Human-readable name of the app
+          example: My App
+        bundleIdentifier:
+          type: string
+          description: |
+            Unique bundle identifier for the app.
+            Reverse-domain format recommended (e.g., com.example.app).
+          example: com.example.app
+        developerName:
+          type: string
+          description: Name of the app developer
+          example: Example Dev
+        subtitle:
+          type: string
+          nullable: true
+          description: Optional subtitle or tagline for the app
+          example: A cool app
+        iconURL:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to the app's icon image
+          example: https://example.com/icon.png
+        versions:
+          type: array
+          description: List of versions for this app
+          items:
+            $ref: '#/components/schemas/AppVersion'
+          default: []
+
     Source:
       type: object
       description: AltStore source object containing apps and metadata.
