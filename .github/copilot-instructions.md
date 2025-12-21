@@ -1,67 +1,171 @@
-# AltStore Source Manager — AI Agent Guide
+# AltStore Source Manager - AI Agent Instructions
 
-## Purpose & Current State
-- Goal: Manage AltStore app sources (apps, versions, builds) and generate a valid AltStore source JSON for distribution.
-- Current repo: Greenfield scaffolding only; see [README.md](README.md) and vision in [copilot-instruction.md](copilot-instruction.md).
-- Branch: `main` is default; keep changes focused and incremental.
+> **For GitHub Copilot and AI agents working on this project.**
 
-## Architecture Intent (from repo docs)
-- Backend API: Manage apps, versions, builds; serve AltStore source JSON and assets (.ipa).
-- Web UI: Dashboard, CRUD for apps/versions; preview/export of source JSON.
-- Auth: Planned; keep interfaces boundary-friendly to add later.
+This document describes the project structure, conventions, and patterns used in AltStore Source Manager. Read this first when working on any task.
 
-## Dev Environment
-- Codespaces: Skip Devbox. The container is already isolated and Devbox may require `sudo` in Codespaces; use the preinstalled tools (JDK/Gradle, etc.).
-- Local development: Use Devbox to isolate dependencies across multiple concurrent projects. Enter the shell with `devbox shell`.
-- Packages list is empty; add per stack (Node, Python, Go, etc.) in [devbox.json](devbox.json). Keep scripts minimal and documented in README.
+---
 
-### Environment Detection
-- Preferred: Detect Codespaces via environment: `CODESPACES=true`, presence of `CODESPACE_NAME`, or `GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN`. Heuristic: path under `/workspaces/...`.
-- Override: Create a `.workenv` file (gitignored) in the repo root containing either `codespaces` or `local`. Use `scripts/detect-env.sh` to resolve the current environment.
+## Quick Start
 
-## Workflows & Conventions
-- Keep documentation tight: update [README.md](README.md) and this file when decisions land.
-- Prefer small PRs: backend scaffold → core CRUD → source JSON generation → UI.
-- Store generated source JSON under a clear route (e.g., `/source.json`) and keep server-side schema validation close to the generator.
-- Use clear domain naming: `App`, `Version`, `Build`, `Source` for entities/paths.
- - Commit behavior: Do not auto-commit changes unless the user explicitly requests it. Default to leaving changes staged/uncommitted for short periods as directed.
+### Project Structure
+```
+altstore-source-manager/
+├── apps/server/              # Spring Boot REST API
+├── packages/                 # Shared code (future)
+├── docs/                     # Architecture, requirements, tech decisions
+├── scripts/                  # Build/deploy utilities
+├── devbox.json              # Development environment
+├── docker-compose.yml       # Local services (PostgreSQL, etc.)
+├── openapi.yaml             # API specification
+└── .github/copilot-instructions.md  # This file
+```
 
-## Commit & Pull Request Conventions
-Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/#specification) for all commits and PR titles:
+### Key Files
+- **Architecture**: [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) - System design and structure
+- **MVP Scope**: [docs/MVP.md](../../docs/MVP.md) - Features and priorities
+- **Infrastructure**: [docs/INFRASTRUCTURE.md](../../docs/INFRASTRUCTURE.md) - Deployment and CI/CD
+- **Requirements**: [docs/REQUIREMENTS.md](../../docs/REQUIREMENTS.md) - Problem and constraints
+- **Tech Stack**: [docs/TECH_STACK.md](../../docs/TECH_STACK.md) - Technology choices
 
-**Format**: `<type>[optional scope]: <description>`
+### Local Development Setup
 
-**Types**:
-- `feat`: New feature (correlates with MINOR in SemVer)
-- `fix`: Bug fix (correlates with PATCH in SemVer)
-- `docs`: Documentation only changes
-- `style`: Code style changes (formatting, missing semicolons, etc.)
-- `refactor`: Code change that neither fixes a bug nor adds a feature
-- `perf`: Performance improvements
-- `test`: Adding or updating tests
-- `build`: Changes to build system or dependencies
-- `ci`: Changes to CI configuration files and scripts
-- `chore`: Other changes that don't modify src or test files
+```bash
+# 1. Enter development environment
+devbox shell
 
-**Breaking Changes**: Append `!` after type/scope (e.g., `feat!: remove legacy API`) or include `BREAKING CHANGE:` footer.
+# 2. Start local services (PostgreSQL, etc.)
+docker-compose up -d
 
-**Examples**:
-- `feat(api): add CRUD endpoints for App entity`
-- `fix(source): correct version date serialization`
-- `docs: update installation steps in README`
-- `refactor(ui)!: migrate to new component library`
+# 3. Build and run the server
+cd apps/server
+gradle bootRun
 
-**PR Titles**: Use the same format; squash commits with conventional title on merge.
+# 4. API is available at http://localhost:8080
+# 5. OpenAPI docs at http://localhost:8080/swagger-ui.html
+```
 
-**Branch Naming**: Create branches using the format `<type>/#<issue-number>-<short-description>` (e.g., `chore/#1-initial-setup`, `feat/#5-app-crud`). The `#` precedes the issue number directly.
+### Running Tests
+```bash
+cd apps/server
+gradle test                    # Run all tests
+gradle test --tests "TestClass"  # Run specific test class
+```
 
-**PR Template**: Use [.github/pull_request_template.md](.github/pull_request_template.md) as a guide when creating pull requests. The template includes Conventional Commits format guidance, type checklist, and standard sections for description, testing, and related issues.
+---
 
-## AltStore Source JSON (essentials)
-- Top-level: `name`, `identifier`, `apps: []`.
-- App: `name`, `bundleIdentifier`, `developerName`, `subtitle`, `iconURL`, `versions: []`.
-- Version: `version`, `date`, `localizedDescription`, `downloadURL`, `size`, `minOSVersion`, `sha256`.
-- Example skeleton to validate against early:
+## Architecture & Design Principles
+
+### Layers
+1. **Presentation (Controllers)**: Thin REST endpoint handlers
+2. **Application (Services)**: Business logic and use cases
+3. **Domain (Models)**: Source, App, Version, Build entities
+4. **Data Access (Repositories)**: Spring Data JPA persistence
+5. **Infrastructure**: HTTP server, database connections
+
+### Key Patterns
+- **Repository Pattern**: Data access abstraction via Spring Data JPA
+- **DTOs at Boundaries**: Request/response DTOs for API contracts
+- **Input Validation**: Constraints at controllers and domain models
+- **Service Layer**: Business rules in services, not controllers
+
+### Folder Structure in `apps/server/`
+```
+apps/server/
+├── src/main/java/
+│   └── com/example/altstore/
+│       ├── controller/       # REST endpoints
+│       ├── service/          # Business logic
+│       ├── repository/       # Data access (Spring Data JPA)
+│       ├── model/            # Domain entities
+│       ├── dto/              # Request/response DTOs
+│       ├── exception/        # Custom exceptions
+│       └── AltStoreApplication.java  # Spring Boot entry point
+├── src/test/java/           # Unit and integration tests
+├── build.gradle.kts         # Gradle build configuration
+└── settings.gradle.kts      # Gradle project settings
+```
+
+---
+
+## Coding Conventions
+
+### Java/Kotlin Style
+- **Reference**: Personal rules for code-style
+- **Formatting**: Use Gradle spotless or similar formatter
+- **Naming**:
+  - Classes: `PascalCase` (e.g., `SourceService`, `AppController`)
+  - Methods/variables: `camelCase`
+  - Constants: `UPPER_SNAKE_CASE`
+  - DTOs: Suffix with `Dto` (e.g., `SourceDto`, `CreateSourceRequest`)
+  - Entities: No suffix (e.g., `Source`, `App`)
+
+### REST API Conventions
+- **Endpoints**: Plural nouns for resources (e.g., `/sources`, `/apps`)
+- **HTTP Methods**:
+  - `GET /sources` - List all sources
+  - `GET /sources/{id}` - Get source by ID
+  - `POST /sources` - Create new source
+  - `PUT /sources/{id}` - Update source (or PATCH for partial updates)
+  - `DELETE /sources/{id}` - Delete source
+  - `GET /source.json` - Generate AltStore source JSON
+- **Status Codes**:
+  - `200 OK` - Success
+  - `201 Created` - Resource created
+  - `400 Bad Request` - Invalid input
+  - `401 Unauthorized` - Auth required
+  - `404 Not Found` - Resource not found
+  - `500 Internal Server Error` - Server error
+
+### Testing
+- **Test Naming**: `should[Behavior][Condition]` (e.g., `shouldCreateSourceWithValidInput`)
+- **Coverage**: Aim for ≥80% on core logic (services, repositories)
+- **Unit Tests**: Mock external dependencies, test pure functions
+- **Integration Tests**: Test repository/database interactions with ephemeral PostgreSQL
+
+### Commit Messages
+- **Format**: `<type>: #<issue> <description>`
+- **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`
+- **Examples**:
+  - `feat: #12 Add source creation endpoint`
+  - `fix: #18 Correct JSON generation for app versions`
+  - `test: #5 Add unit tests for SourceService`
+
+---
+
+## API Design
+
+### OpenAPI Documentation
+- Specification: [openapi.yaml](../../openapi.yaml)
+- Auto-generated docs at `/swagger-ui.html` when running locally
+- Keep spec in sync with code; regenerate if endpoints change
+
+### Response Format
+```json
+{
+  "success": true,
+  "data": { /* resource data */ },
+  "error": null
+}
+```
+
+### Error Responses
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INVALID_INPUT",
+    "message": "Source name is required"
+  }
+}
+```
+
+### AltStore Source JSON
+- Top-level: `name`, `identifier`, `apps: []`
+- App: `name`, `bundleIdentifier`, `developerName`, `subtitle`, `iconURL`, `versions: []`
+- Version: `version`, `date`, `localizedDescription`, `downloadURL`, `size`, `minOSVersion`, `sha256`
+- Example:
 ```json
 {
   "name": "My Source",
@@ -83,18 +187,180 @@ Follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0
 }
 ```
 
-## Immediate, Concrete Tasks (derived from repo docs)
-- Initialize backend API with CRUD for `App` and `Version` plus `/source.json` that renders current state.
-- Add minimal persistence (file-based or lightweight DB) behind a repository layer to allow later swap.
-- Add a tiny Web UI that lists apps and versions; include a live source preview panel.
-- Wire a `test` script in Devbox shell and basic validation for the source JSON shape.
+---
 
-## Key References in Repo
-- Vision and scope: [copilot-instruction.md](copilot-instruction.md)
-- Environment & scripts: [devbox.json](devbox.json)
-- Project root notes: [README.md](README.md)
+## Data Model
 
-## Guardrails
-- Don’t commit real IPA files; use sample placeholders/links.
-- Keep interfaces stable; surface changes in README and this guide.
-- Prefer explicit schemas (JSON Schema/Type definitions) near the generator to gate regressions.
+### Entity Hierarchy
+```
+Source
+├── name, subtitle, icon, description (metadata)
+├── Apps[] (1:many)
+│   ├── name, bundleID, developer info
+│   ├── Versions[] (1:many)
+│   │   ├── version number, release date
+│   │   ├── Builds[] (1:many)
+│   │   │   ├── build number, download URL
+│   │   │   ├── iOS version requirement
+│   │   │   └── release notes
+```
+
+### Key Entities
+- **Source**: Top-level container for a collection of apps
+- **App**: Individual application with metadata
+- **Version**: Release version of an app
+- **Build**: Specific build/variant of a version
+
+---
+
+## Development Workflow
+
+### Creating a New Feature
+1. Create issue for feature in GitHub
+2. Create branch: `feat/#<issue>-short-description`
+3. Implement in `apps/server/`
+4. Write tests alongside code (TDD where applicable)
+5. Run `gradle test` and `gradle spotless` to validate
+6. Commit with message: `feat: #<issue> <description>`
+7. Push and create PR
+8. Address review feedback
+9. Merge when approved
+
+### Debugging
+- Enable debug logging: Set `logging.level.com.example.altstore=DEBUG` in `application.properties`
+- Use IDE debugger (IntelliJ IDEA recommended)
+- Check Docker logs: `docker-compose logs -f postgres`
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+- **Where**: `src/test/java/` in same package structure as code
+- **Framework**: JUnit 5 + Mockito
+- **Example**:
+  ```java
+  @Test
+  void shouldCreateSourceWithValidInput() {
+    // Arrange
+    CreateSourceRequest request = new CreateSourceRequest("My Source", "subtitle", ...);
+    
+    // Act
+    SourceDto result = sourceService.create(request);
+    
+    // Assert
+    assertThat(result).isNotNull();
+    assertThat(result.getName()).isEqualTo("My Source");
+  }
+  ```
+
+### Integration Tests
+- **Where**: `src/test/java/` with `@DataJpaTest` or `@SpringBootTest`
+- **Setup**: Use embedded PostgreSQL or Testcontainers
+- **Focus**: Database interactions, full request-response cycles
+
+### Running Tests
+```bash
+gradle test                    # All tests
+gradle test --tests "ServiceTest"  # Specific class
+gradle test --fail-fast        # Stop on first failure
+```
+
+---
+
+## Deployment
+
+### Local (Docker Compose)
+```bash
+docker-compose up -d        # Start services
+docker-compose logs -f      # View logs
+docker-compose down         # Stop services
+```
+
+### Staging/Production
+- **Infrastructure**: [docs/INFRASTRUCTURE.md](../../docs/INFRASTRUCTURE.md)
+- **CI/CD**: GitHub Actions (to be set up)
+- **Database Migrations**: Run before deployment
+- **Health Checks**: Verify `/health` endpoint
+
+---
+
+## Common Commands
+
+```bash
+# Development
+devbox shell                 # Enter dev environment
+cd apps/server && gradle bootRun   # Run server locally
+gradle test                  # Run tests
+gradle spotless              # Format code
+
+# Docker
+docker-compose up -d         # Start services
+docker-compose down          # Stop services
+docker-compose ps            # View running services
+
+# Git
+git checkout -b feat/#<issue>-description   # New feature branch
+git commit -m "feat: #<issue> description"  # Commit
+gh pr create                 # Create PR
+```
+
+---
+
+## Environment Setup
+
+### Local Development
+- **Tool**: Devbox (pins JDK 21, Gradle, Docker)
+- **Start**: `devbox shell` from repo root
+- **Services**: `docker-compose up -d` for PostgreSQL
+
+### Codespaces
+- **Skip Devbox**: Codespaces container is already isolated
+- **Use preinstalled**: JDK 21, Gradle, Docker already available
+- **Environment vars**: `.env.example` → `.env`
+
+---
+
+## Useful Links
+
+- **Spring Boot Docs**: https://spring.io/projects/spring-boot
+- **Spring Data JPA**: https://spring.io/projects/spring-data-jpa
+- **Gradle Docs**: https://docs.gradle.org/
+- **OpenAPI Spec**: https://spec.openapis.org/
+- **AltStore Docs**: https://altstore.io/
+
+---
+
+## Troubleshooting
+
+### Build fails
+- Run `gradle clean` and try again
+- Ensure JDK 21 is in use: `java -version`
+
+### Tests fail
+- Check database connectivity: `docker-compose logs postgres`
+- Ensure test database migrations ran
+- Check `application-test.properties` for test config
+
+### Server won't start
+- Check port 8080 is available: `lsof -i :8080`
+- Check logs: `docker-compose logs -f postgres`
+- Verify `.env` file has required variables (see `.env.example`)
+
+### Docker issues
+- Rebuild images: `docker-compose build --no-cache`
+- Remove stale volumes: `docker-compose down -v`
+
+---
+
+## When in Doubt
+
+1. Check the documentation in `docs/`
+2. Look at the OpenAPI spec (`openapi.yaml`)
+3. Review existing code for patterns
+4. Ask in comments or commit messages; be explicit about decisions
+
+---
+
+**Last Updated**: December 21, 2025  
+**Status**: Production - aligned with project-starter-kit standards
