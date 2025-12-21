@@ -11,7 +11,7 @@ This document captures the initial, practical stack for AltStore Source Manager.
 - CI/CD: GitHub Actions
 
 ## Backend (Ktor Server)
-- Language: Kotlin (JDK 17+); Ktor Server.
+- Language: Kotlin (JDK 21+); Ktor Server.
 - Responsibilities: REST API for Apps/Versions, auth, source generator (`/source.json`), asset presigned URLs.
 - Suggested ports: API on 8080; health at `/health`.
 - Config via env vars (examples):
