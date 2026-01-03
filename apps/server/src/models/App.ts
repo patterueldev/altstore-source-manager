@@ -3,12 +3,16 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IApp extends Document {
   name: string;
   bundleIdentifier: string;
+  marketplaceID?: string;
   developerName: string;
   subtitle?: string;
   localizedDescription?: string;
   iconURL?: string;
   tintColor?: string;
-  screenshotURLs?: string[];
+  category?: string;
+  screenshots?: string[];
+  appPermissions?: any;
+  patreon?: any;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +27,7 @@ const AppSchema = new Schema<IApp>({
     required: true,
     unique: true,
   },
+  marketplaceID: String,
   developerName: {
     type: String,
     required: true,
@@ -31,7 +36,10 @@ const AppSchema = new Schema<IApp>({
   localizedDescription: String,
   iconURL: String,
   tintColor: String,
-  screenshotURLs: [String],
+  category: String,
+  screenshots: [String],
+  appPermissions: Schema.Types.Mixed,
+  patreon: Schema.Types.Mixed,
 }, {
   timestamps: true,
 });

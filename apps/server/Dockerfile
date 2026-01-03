@@ -10,10 +10,10 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server ./apps/server
 
 # Install dependencies
-RUN npm install -g pnpm@10.0.0 && pnpm install --frozen-lockfile
+RUN npm install -g pnpm@10.0.0 && pnpm install --prod=false
 
-# Build
-RUN cd apps/server && pnpm build
+# Build from workspace root to ensure proper module resolution
+RUN pnpm --filter @altstore/server build
 
 # Runtime stage
 FROM node:20-alpine
@@ -27,6 +27,9 @@ RUN npm install -g pnpm@10.0.0
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
+
+# Copy OpenAPI spec
+COPY openapi.yaml ./
 
 # Copy built server code
 COPY --from=builder /app/apps/server ./apps/server

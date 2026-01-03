@@ -4,6 +4,10 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { Client as MinioClient } from 'minio';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { User } from './models/User.js';
 import { App } from './models/App.js';
 import { Version } from './models/Version.js';
@@ -13,6 +17,9 @@ import versionRoutes from './routes/versions.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://admin:password@mongodb:27017/altstore?authSource=admin';
@@ -20,6 +27,14 @@ const MONGO_URI = process.env.MONGO_URI || 'mongodb://admin:password@mongodb:270
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Swagger UI
+try {
+  const swaggerDocument = YAML.load(path.join(__dirname, '../../../openapi.yaml'));
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+} catch (error) {
+  console.warn('Failed to load OpenAPI spec:', error);
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -41,14 +56,19 @@ app.get('/source.json', async (req, res) => {
       return {
         name: app.name,
         bundleIdentifier: app.bundleIdentifier,
+        marketplaceID: app.marketplaceID,
         developerName: app.developerName,
         subtitle: app.subtitle,
         localizedDescription: app.localizedDescription,
         iconURL: app.iconURL,
         tintColor: app.tintColor,
-        screenshotURLs: app.screenshotURLs,
+        category: app.category,
+        screenshots: app.screenshots,
+        appPermissions: app.appPermissions,
+        patreon: app.patreon,
         versions: versions.map(v => ({
           version: v.version,
+          buildVersion: v.buildVersion,
           date: v.date.toISOString().split('T')[0],
           localizedDescription: v.localizedDescription,
           downloadURL: v.downloadURL,
@@ -62,8 +82,17 @@ app.get('/source.json', async (req, res) => {
 
     res.json({
       name: process.env.SOURCE_NAME || 'AltStore Source',
+      subtitle: process.env.SOURCE_SUBTITLE,
+      description: process.env.SOURCE_DESCRIPTION,
+      iconURL: process.env.SOURCE_ICON_URL,
+      headerURL: process.env.SOURCE_HEADER_URL,
+      website: process.env.SOURCE_WEBSITE,
+      patreonURL: process.env.SOURCE_PATREON_URL,
+      tintColor: process.env.SOURCE_TINT_COLOR,
       identifier: process.env.SOURCE_IDENTIFIER || 'com.example.source',
+      featuredApps: process.env.SOURCE_FEATURED_APPS?.split(',').filter(Boolean) || [],
       apps: sourceApps,
+      news: [],
     });
   } catch (error) {
     console.error('Source generation error:', error);

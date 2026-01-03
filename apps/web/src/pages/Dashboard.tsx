@@ -147,7 +147,12 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
     developerName: '',
     subtitle: '',
     iconURL: '',
+    marketplaceID: '',
+    category: '',
+    tintColor: '',
   });
+  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [screenshotInput, setScreenshotInput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -157,13 +162,24 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
     setLoading(true);
 
     try {
-      await api.post('/apps', formData);
+      await api.post('/apps', { ...formData, screenshots });
       onSuccess();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create app');
     } finally {
       setLoading(false);
     }
+  };
+
+  const addScreenshot = () => {
+    if (screenshotInput.trim()) {
+      setScreenshots([...screenshots, screenshotInput.trim()]);
+      setScreenshotInput('');
+    }
+  };
+
+  const removeScreenshot = (index: number) => {
+    setScreenshots(screenshots.filter((_, i) => i !== index));
   };
 
   return (
@@ -226,6 +242,51 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              Marketplace ID
+            </label>
+            <input
+              type="text"
+              value={formData.marketplaceID}
+              onChange={(e) => setFormData({ ...formData, marketplaceID: e.target.value })}
+              placeholder="12345678"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="">Select category</option>
+              <option value="utilities">Utilities</option>
+              <option value="games">Games</option>
+              <option value="entertainment">Entertainment</option>
+              <option value="lifestyle">Lifestyle</option>
+              <option value="productivity">Productivity</option>
+              <option value="developer-tools">Developer Tools</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tint Color
+            </label>
+            <input
+              type="text"
+              value={formData.tintColor}
+              onChange={(e) => setFormData({ ...formData, tintColor: e.target.value })}
+              placeholder="#F54F32"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Icon URL
             </label>
             <input
@@ -235,6 +296,45 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
               placeholder="https://example.com/icon.png"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Screenshots
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="url"
+                value={screenshotInput}
+                onChange={(e) => setScreenshotInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addScreenshot())}
+                placeholder="https://example.com/screenshot.png"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+              <button
+                type="button"
+                onClick={addScreenshot}
+                className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              >
+                Add
+              </button>
+            </div>
+            {screenshots.length > 0 && (
+              <div className="space-y-1">
+                {screenshots.map((url, index) => (
+                  <div key={index} className="flex items-center gap-2 text-sm">
+                    <span className="flex-1 truncate text-gray-600">{url}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeScreenshot(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {error && (

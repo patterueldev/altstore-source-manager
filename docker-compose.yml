@@ -24,7 +24,7 @@ services:
         condition: service_healthy
     networks:
       - altstore-network
-    command: pnpm --filter @altstore/server dev
+    command: sh -c "pnpm --filter @altstore/server build && node apps/server/dist/index.js"
 
   # Frontend Web (React + Vite)
   web:

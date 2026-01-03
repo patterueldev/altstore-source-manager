@@ -33,7 +33,11 @@ router.get('/:id', async (req, res) => {
 // Create app (authenticated)
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { name, bundleIdentifier, developerName, subtitle, localizedDescription, iconURL, tintColor } = req.body;
+    const { 
+      name, bundleIdentifier, marketplaceID, developerName, subtitle, 
+      localizedDescription, iconURL, tintColor, category, screenshots,
+      appPermissions, patreon 
+    } = req.body;
 
     if (!name || !bundleIdentifier || !developerName) {
       return res.status(400).json({ error: 'Name, bundleIdentifier, and developerName are required' });
@@ -42,11 +46,16 @@ router.post('/', authMiddleware, async (req, res) => {
     const app = new App({
       name,
       bundleIdentifier,
+      marketplaceID,
       developerName,
       subtitle,
       localizedDescription,
       iconURL,
       tintColor,
+      category,
+      screenshots,
+      appPermissions,
+      patreon,
     });
 
     await app.save();
@@ -63,7 +72,11 @@ router.post('/', authMiddleware, async (req, res) => {
 // Update app (authenticated)
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { name, bundleIdentifier, developerName, subtitle, localizedDescription, iconURL, tintColor } = req.body;
+    const { 
+      name, bundleIdentifier, marketplaceID, developerName, subtitle, 
+      localizedDescription, iconURL, tintColor, category, screenshots,
+      appPermissions, patreon 
+    } = req.body;
     
     const app = await App.findById(req.params.id);
     if (!app) {
@@ -72,11 +85,16 @@ router.put('/:id', authMiddleware, async (req, res) => {
 
     if (name) app.name = name;
     if (bundleIdentifier) app.bundleIdentifier = bundleIdentifier;
+    if (marketplaceID !== undefined) app.marketplaceID = marketplaceID;
     if (developerName) app.developerName = developerName;
     if (subtitle !== undefined) app.subtitle = subtitle;
     if (localizedDescription !== undefined) app.localizedDescription = localizedDescription;
     if (iconURL !== undefined) app.iconURL = iconURL;
     if (tintColor !== undefined) app.tintColor = tintColor;
+    if (category !== undefined) app.category = category;
+    if (screenshots !== undefined) app.screenshots = screenshots;
+    if (appPermissions !== undefined) app.appPermissions = appPermissions;
+    if (patreon !== undefined) app.patreon = patreon;
 
     await app.save();
     res.json(app);

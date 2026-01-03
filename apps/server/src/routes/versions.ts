@@ -53,7 +53,7 @@ router.get('/:id', async (req, res) => {
 // Create version with IPA upload (authenticated)
 router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
   try {
-    const { appId, version, date, localizedDescription, minOSVersion, maxOSVersion } = req.body;
+    const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion } = req.body;
 
     if (!appId || !version || !date || !minOSVersion) {
       return res.status(400).json({ error: 'appId, version, date, and minOSVersion are required' });
@@ -94,6 +94,7 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
     const versionDoc = new Version({
       appId,
       version,
+      buildVersion,
       date: new Date(date),
       localizedDescription,
       downloadURL,
@@ -117,7 +118,7 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
 // Update version (authenticated)
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { version, date, localizedDescription, minOSVersion, maxOSVersion } = req.body;
+    const { version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion } = req.body;
     
     const versionDoc = await Version.findById(req.params.id);
     if (!versionDoc) {
@@ -125,6 +126,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 
     if (version) versionDoc.version = version;
+    if (buildVersion !== undefined) versionDoc.buildVersion = buildVersion;
     if (date) versionDoc.date = new Date(date);
     if (localizedDescription !== undefined) versionDoc.localizedDescription = localizedDescription;
     if (minOSVersion) versionDoc.minOSVersion = minOSVersion;
