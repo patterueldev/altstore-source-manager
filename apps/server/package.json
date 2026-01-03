@@ -1,0 +1,30 @@
+{
+  "name": "@altstore/server",
+  "version": "1.0.0",
+  "description": "AltStore Source Manager Backend API",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "node --loader tsx src/index.ts",
+    "build": "tsc",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "express": "catalog:",
+    "mongoose": "catalog:",
+    "dotenv": "catalog:",
+    "axios": "catalog:",
+    "minio": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@types/node": "catalog:",
+    "@types/express": "catalog:",
+    "vitest": "catalog:",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "tsx": "^4.6.0"
+  }
+}

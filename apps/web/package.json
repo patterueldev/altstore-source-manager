@@ -1,0 +1,32 @@
+{
+  "name": "@altstore/web",
+  "version": "1.0.0",
+  "description": "AltStore Source Manager Frontend Dashboard",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "axios": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "vite": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "tailwindcss": "catalog:",
+    "postcss": "catalog:",
+    "autoprefixer": "catalog:",
+    "vitest": "catalog:",
+    "eslint": "catalog:",
+    "prettier": "catalog:"
+  }
+}

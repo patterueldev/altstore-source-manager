@@ -1,0 +1,27 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker images
+        run: |
+          docker buildx build --tag altstore-backend:latest apps/server
+          docker buildx build --tag altstore-frontend:latest apps/web
+      
+      - name: Build and push (optional)
+        # Add registry login and push steps here when ready
+        # For now, just verify builds work
+        run: echo "Docker images built successfully"

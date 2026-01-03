@@ -1,14 +1,18 @@
 {
-  "$schema":  "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
-  "packages": ["jetbrains.jdk@latest"],
-  "shell": {
-    "init_hook": [
-      "echo 'Welcome to devbox!' > /dev/null"
+  "packages": [
+    "nodejs@20"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "scripts": {
+    "test": [
+      "echo 'Running tests...'",
+      "pnpm test"
     ],
-    "scripts": {
-      "test": [
-        "echo \"Error: no test specified\" && exit 1"
-      ]
-    }
+    "dev": [
+      "echo 'Starting development servers...'",
+      "pnpm dev"
+    ]
   }
 }

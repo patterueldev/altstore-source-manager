@@ -6,34 +6,19 @@ A service to manage AltStore app sources (apps, versions, builds) and generate a
 
 See SETUP.md for environment setup.
 
-### Server (Gradle Spring Boot)
+### Full Stack Development
 
-The server project lives under `apps/server/` and exposes:
-- `GET /health` — simple health check
-- `GET /source.json` — returns a sample AltStore Source JSON
+This is a monorepo with two main applications:
+- `apps/server/` — Express.js backend API
+- `apps/web/` — React frontend dashboard
 
-Run locally (requires JDK 17 and Gradle):
+Both share dependencies via PNPM workspaces.
 
+**Quick start** (requires Node.js 20+ and PNPM 10):
+
+```bash
+pnpm install
+pnpm dev          # Start all services in watch mode
+pnpm build        # Build all apps
+pnpm test         # Run tests
 ```
-cd apps/server
-gradle bootRun
-```
-
-Run tests:
-
-```
-cd apps/server
-gradle test
-```
-
-Or use Nx:
-
-```
-nx run server:build
-nx run server:test
-nx run server:serve
-```
-
-Notes:
-- If Gradle is not installed, you can install it via your package manager or add it to Devbox. We'll wire Devbox packages in a follow-up.
-- The `/source.json` output is a placeholder per the schema in copilot-instructions; CRUD and persistence will follow.

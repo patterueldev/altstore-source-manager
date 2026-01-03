@@ -6,18 +6,33 @@
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| Language | Java/Kotlin | Type-safe, mature ecosystem, Spring Boot support |
-| Framework | Spring Boot | Rapid REST API development, excellent tooling, widely adopted |
-| Build Tool | Gradle | Modern, flexible, Kotlin DSL support |
-| JDK Version | 21 | Latest LTS; good performance and features |
+| Language | JavaScript (Node.js) | Fast prototyping, rich ecosystem, excellent for REST APIs |
+| Runtime | Node.js 20 LTS | Latest LTS; excellent performance; strong community |
+| Framework | Express.js | Lightweight, flexible, industry-standard for Node.js APIs |
+| Type Safety | TypeScript | Static typing reduces bugs; excellent IDE support |
+
+## Frontend
+
+| Component | Choice | Rationale |
+|-----------|--------|-----------|
+| Framework | React 18 | Modern UI composition, hooks, strong ecosystem |
+| Build Tool | Vite | Ultra-fast HMR, optimized production builds |
+| Styling | Tailwind CSS | Utility-first CSS, rapid UI development |
+| Type Safety | TypeScript | Shared type system with backend |
+
+## Package Management
+
+| Component | Choice | Rationale |
+|-----------|--------|-----------|
+| Package Manager | PNPM 10 | Faster installs, efficient monorepo support, disk space savings |
+| Catalog | PNPM catalog | Version centralization for monorepo dependencies |
 
 ## Database
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| Database | PostgreSQL | Relational model fits source hierarchy; open-source; mature |
-| ORM | Spring Data JPA (Hibernate) | Part of Spring ecosystem; reduces boilerplate |
-| Migrations | TBD | Flyway or Liquibase (to be decided) |
+| Database | MongoDB | Document-oriented model fits app metadata; flexible schema |
+| Driver | Mongoose (ODM) | Elegant data validation and migrations |
 
 ## API
 
@@ -31,9 +46,10 @@
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| Local Dev | Devbox + Gradle | Reproducible environment; isolates tool versions |
-| Local Services | Docker Compose | Spins up PostgreSQL and other services locally |
-| Testing | JUnit 5 + Mockito (+ future integration tests) | Standard for Spring Boot |
+| Local Dev | Devbox + Node.js | Reproducible environment; isolates tool versions |
+| Local Services | Docker Compose | Spins up MongoDB, MinIO, and other services locally |
+| Testing | Vitest (backend) + Vitest (frontend) | Lightning-fast, Vite-native test runner |
+| Monorepo | PNPM workspaces | Efficient dependency resolution, shared build tools |
 
 ## Deployment
 
@@ -47,7 +63,8 @@
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| Logging | TBD | Likely stdout (Spring default) or ELK/Datadog |
+| Logging | Winston (backend) | Structured logging with multiple transports |
+| Frontend Errors | TBD | Sentry or similar error tracking (optional) |
 | Metrics | TBD | Prometheus or cloud-native options |
 | Health Checks | Spring Boot Actuator | Built-in /health and /metrics endpoints |
 

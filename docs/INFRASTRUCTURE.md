@@ -4,27 +4,30 @@
 
 ## Deployment Strategy
 
-**Preferred Platform**: TBD (Heroku, AWS ECS, Cloud Run, self-hosted)
-**Container**: Docker (Dockerfile provided)
-**Infrastructure as Code**: TBD (Terraform, Docker Compose for local dev)
+**Containerization**: Docker (multi-stage Dockerfile for both backend and frontend)  
+**CI/CD**: GitHub Actions (runs on PR and merge-to-main)  
+**Infrastructure as Code**: Docker Compose for local dev; TBD for production (Kubernetes, Cloud Run, etc.)
 
 ## Environments
 
-- **Development**: Local via `docker-compose.yml` or Devbox + local Gradle
+- **Development**: Local via `docker-compose.yml` + `pnpm dev` or Devbox shell
 - **Staging**: TBD (for testing before production)
-- **Production**: TBD (deployment target and pipeline)
+- **Production**: TBD (Docker deployment target)
 
 ## CI/CD Pipeline
 
 ### On PR
-- [ ] Lint (Gradle spotless or similar)
-- [ ] Build (Gradle build)
-- [ ] Unit tests (Gradle test)
-- [ ] Smoke tests (optional Docker Compose ephemeral environment)
+- [ ] Install dependencies (`pnpm install`)
+- [ ] Lint backend + frontend (`pnpm lint`)
+- [ ] Build backend + frontend (`pnpm build`)
+- [ ] Unit tests (`pnpm test`)
+- [ ] Type check (`pnpm type-check`)
 
 ### On merge to main
 - [ ] Full test suite
-- [ ] Deploy to staging
+- [ ] Build Docker images (backend + frontend)
+- [ ] Push images to registry (TBD: Docker Hub, GitHub Container Registry, etc.)
+- [ ] Deploy to staging (if applicable)
 - [ ] Run smoke tests on staging
 
 ### On release/manual trigger
@@ -54,13 +57,14 @@
 
 ## Database
 
-- **Local dev**: PostgreSQL via docker-compose.yml
-- **Staging/Prod**: TBD (managed PostgreSQL instance)
+- **Local dev**: MongoDB via docker-compose.yml
+- **Staging/Prod**: TBD (MongoDB Atlas or managed MongoDB instance)
 - **Backups**: TBD (frequency, retention, recovery process)
 
 ### Migrations
-- TBD (Flyway, Liquibase, or Gradle task)
-- Versioned and tracked in VCS
+- Handled via Mongoose schema versions
+- Data transformations scripted in `scripts/migrations/` (as needed)
+- Tracked in VCS
 
 ## Backup & Disaster Recovery
 
