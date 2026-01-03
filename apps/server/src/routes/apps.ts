@@ -195,6 +195,53 @@ router.post('/:id/screenshots', authMiddleware, upload.array('screenshots', 10),
   }
 });
 
+// Delete screenshot (authenticated)
+router.delete('/:id/screenshots/:index', authMiddleware, async (req, res) => {
+  try {
+    const app = await App.findById(req.params.id);
+    if (!app) {
+      return res.status(404).json({ error: 'App not found' });
+    }
+
+    const index = parseInt(req.params.index);
+    if (isNaN(index) || index < 0 || index >= (app.screenshots?.length || 0)) {
+      return res.status(400).json({ error: 'Invalid screenshot index' });
+    }
+
+    // Remove screenshot from array
+    app.screenshots = app.screenshots?.filter((_, i) => i !== index) || [];
+    await app.save();
+
+    res.json({ screenshots: app.screenshots });
+  } catch (error) {
+    console.error('Delete screenshot error:', error);
+    res.status(500).json({ error: 'Failed to delete screenshot' });
+  }
+});
+
+// Reorder screenshots (authenticated)
+router.put('/:id/screenshots/reorder', authMiddleware, async (req, res) => {
+  try {
+    const app = await App.findById(req.params.id);
+    if (!app) {
+      return res.status(404).json({ error: 'App not found' });
+    }
+
+    const { screenshots } = req.body;
+    if (!Array.isArray(screenshots)) {
+      return res.status(400).json({ error: 'Screenshots must be an array' });
+    }
+
+    app.screenshots = screenshots;
+    await app.save();
+
+    res.json({ screenshots: app.screenshots });
+  } catch (error) {
+    console.error('Reorder screenshots error:', error);
+    res.status(500).json({ error: 'Failed to reorder screenshots' });
+  }
+});
+
 // Delete app (authenticated)
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {

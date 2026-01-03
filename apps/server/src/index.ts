@@ -95,7 +95,7 @@ app.get('/', async (req, res) => {
 
     const apps = await App.find({ visible: true });
     const sourceApps = await Promise.all(apps.map(async (app) => {
-      const versions = await Version.find({ appId: app._id, visible: true }).sort({ date: -1 });
+      const versions = await Version.find({ appId: app._id, visible: true }).sort({ createdAt: -1 });
       
       // Only include classic format fields
       return {
@@ -212,7 +212,7 @@ async function initializeMinIO() {
     secretKey: process.env.MINIO_SECRET_KEY || 'devsecret',
   });
 
-  const buckets = ['ipas', 'icons', 'screenshots'];
+  const buckets = ['ipas', 'icons', 'screenshots', 'source-images'];
   
   for (const bucket of buckets) {
     try {

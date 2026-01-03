@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SketchPicker } from 'react-color';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { api } from '../lib/api';
 
 interface App {
@@ -50,7 +51,11 @@ export default function AppDetail() {
         api.get(`/versions/app/${id}`),
       ]);
       setApp(appRes.data);
-      setVersions(versionsRes.data);
+      // Sort versions by createdAt descending (latest uploaded first)
+      const sortedVersions = versionsRes.data.sort((a: Version, b: Version) => {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+      setVersions(sortedVersions);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -231,6 +236,19 @@ export default function AppDetail() {
   );
 }
 
+// Helper function to generate iOS versions
+function generateiOSVersions(): string[] {
+  const versions: string[] = [];
+  for (let major = 12; major <= 18; major++) {
+    for (let minor = 0; minor <= 9; minor++) {
+      versions.push(`${major}.${minor}`);
+    }
+  }
+  return versions;
+}
+
+const iosVersions = generateiOSVersions();
+
 interface EditAppModalProps {
   app: App;
   onClose: () => void;
@@ -248,9 +266,61 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
     visible: app.visible !== undefined ? app.visible : true,
   });
   const [iconFile, setIconFile] = useState<File | null>(null);
+  const [screenshots, setScreenshots] = useState<string[]>(app.screenshots || []);
+  const [newScreenshots, setNewScreenshots] = useState<File[]>([]);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const handleAddScreenshots = (files: FileList | null) => {
+    if (!files) {
+      console.log('No files selected');
+      return;
+    }
+    
+    console.log(`Selected ${files.length} files`);
+    const totalCount = screenshots.length + newScreenshots.length + files.length;
+    
+    console.log(`Current screenshots: ${screenshots.length}, new screenshots: ${newScreenshots.length}, adding: ${files.length}, total: ${totalCount}`);
+    
+    if (totalCount > 6) {
+      const errorMsg = `Maximum 6 screenshots allowed. You can add ${6 - (screenshots.length + newScreenshots.length)} more.`;
+      console.warn(errorMsg);
+      setError(errorMsg);
+      return;
+    }
+    
+    setError('');
+    const filesArray = Array.from(files);
+    filesArray.forEach((file, index) => {
+      console.log(`  File ${index + 1}: ${file.name}, ${file.type}, ${file.size} bytes`);
+    });
+    
+    setNewScreenshots([...newScreenshots, ...filesArray]);
+    console.log(`New screenshots array updated, now has ${newScreenshots.length + filesArray.length} files`);
+  };
+
+  const handleRemoveExistingScreenshot = async (index: number) => {
+    try {
+      await api.delete(`/apps/${app._id}/screenshots/${index}`);
+      setScreenshots(screenshots.filter((_, i) => i !== index));
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to delete screenshot');
+    }
+  };
+
+  const handleRemoveNewScreenshot = (index: number) => {
+    setNewScreenshots(newScreenshots.filter((_, i) => i !== index));
+  };
+
+  const handleReorderScreenshots = (result: DropResult) => {
+    if (!result.destination) return;
+    const items = Array.from(screenshots);
+    const [reordered] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reordered);
+    setScreenshots(items);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,20 +328,71 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
     setLoading(true);
 
     try {
+      console.log('Starting app update...');
+      
+      // Update app metadata
+      console.log('Updating app metadata:', formData);
       await api.put(`/apps/${app._id}`, formData);
+      console.log('App metadata updated');
       
       // Upload icon if changed
       if (iconFile) {
+        console.log('Uploading icon:', iconFile.name, iconFile.type, iconFile.size);
         const iconFormData = new FormData();
         iconFormData.append('icon', iconFile);
         await api.post(`/apps/${app._id}/icon`, iconFormData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+        console.log('Icon uploaded successfully');
+      }
+
+      // Upload new screenshots
+      let updatedScreenshots = screenshots;
+      if (newScreenshots.length > 0) {
+        console.log(`Uploading ${newScreenshots.length} new screenshots`);
+        const screenshotFormData = new FormData();
+        newScreenshots.forEach((file, index) => {
+          screenshotFormData.append('screenshots', file);
+          console.log(`  Screenshot ${index + 1}: ${file.name}, ${file.type}, ${file.size} bytes`);
+        });
+        
+        try {
+          const response = await api.post(`/apps/${app._id}/screenshots`, screenshotFormData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          console.log('Screenshots uploaded successfully:', response.data);
+          
+          // Update screenshots state with newly uploaded URLs
+          if (response.data.screenshots) {
+            updatedScreenshots = response.data.screenshots;
+            setScreenshots(updatedScreenshots);
+          }
+          
+          // Clear newScreenshots after successful upload
+          setNewScreenshots([]);
+        } catch (screenshotError: any) {
+          console.error('Screenshot upload failed:', screenshotError);
+          throw new Error(`Screenshot upload failed: ${screenshotError.response?.data?.error || screenshotError.message}`);
+        }
+      }
+
+      // Update screenshot order if there are screenshots and order was changed
+      if (updatedScreenshots.length > 0) {
+        console.log('Updating screenshot order:', updatedScreenshots);
+        await api.put(`/apps/${app._id}/screenshots/reorder`, { screenshots: updatedScreenshots });
+        console.log('Screenshot order updated');
       }
       
-      onSuccess();
+      console.log('App update complete, showing success message');
+      setSuccess(true);
+      
+      // Show success message for 1.5 seconds before closing
+      setTimeout(() => {
+        onSuccess();
+      }, 1500);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update app');
+      console.error('App update error:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to update app');
     } finally {
       setLoading(false);
     }
@@ -399,7 +520,101 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
               </label>
             </div>
           </div>
+          {/* Screenshots Section */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Screenshots (Max 6, PNG/JPEG)
+            </label>
+            
+            {/* Existing Screenshots with Drag-to-Reorder */}
+            {screenshots.length > 0 && (
+              <DragDropContext onDragEnd={handleReorderScreenshots}>
+                <Droppable droppableId="screenshots" direction="horizontal">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="flex gap-2 mb-3 overflow-x-auto pb-2"
+                    >
+                      {screenshots.map((url, index) => (
+                        <Draggable key={url} draggableId={url} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`relative flex-shrink-0 ${snapshot.isDragging ? 'opacity-50' : ''}`}
+                            >
+                              <img
+                                src={url}
+                                alt={`Screenshot ${index + 1}`}
+                                className="h-32 w-auto rounded border-2 border-gray-300"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveExistingScreenshot(index)}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                              >
+                                ×
+                              </button>
+                              <div className="text-xs text-center text-gray-500 mt-1">#{index + 1}</div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            )}
 
+            {/* New Screenshots Preview */}
+            {newScreenshots.length > 0 && (
+              <div className="flex gap-2 mb-3 overflow-x-auto pb-2">
+                {newScreenshots.map((file, index) => (
+                  <div key={index} className="relative flex-shrink-0">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`New ${index + 1}`}
+                      className="h-32 w-auto rounded border-2 border-green-300"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNewScreenshot(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                    <div className="text-xs text-center text-green-600 mt-1">New</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload Button */}
+            {(screenshots.length + newScreenshots.length) < 6 && (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  multiple
+                  onChange={(e) => handleAddScreenshots(e.target.files)}
+                  className="hidden"
+                  id="screenshots-input"
+                />
+                <label htmlFor="screenshots-input" className="cursor-pointer">
+                  <p className="text-sm text-gray-600">
+                    <span className="text-purple-600 font-medium">Click to upload</span> screenshots
+                    <br />
+                    <span className="text-xs text-gray-500">
+                      {screenshots.length + newScreenshots.length}/6 used
+                    </span>
+                  </p>
+                </label>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -409,9 +624,15 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
               className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
             />
             <label htmlFor="app-visible" className="text-sm font-medium text-gray-700">
-              Visible in source.json
+              Visible in source
             </label>
           </div>
+
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded-lg text-sm">
+              ✓ App updated successfully!
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
@@ -429,10 +650,12 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              disabled={loading || success}
+              className={`flex-1 px-4 py-2 text-white rounded-lg disabled:opacity-50 ${
+                success ? 'bg-green-600' : 'bg-purple-600 hover:bg-purple-700'
+              }`}
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {success ? '✓ Saved!' : loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>
@@ -517,22 +740,29 @@ function EditVersionModal({ version, onClose, onSuccess }: EditVersionModalProps
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Min iOS *</label>
-              <input
-                type="text"
+              <select
                 value={formData.minOSVersion}
                 onChange={(e) => setFormData({ ...formData, minOSVersion: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 required
-              />
+              >
+                {iosVersions.map((version) => (
+                  <option key={version} value={version}>iOS {version}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Max iOS</label>
-              <input
-                type="text"
+              <select
                 value={formData.maxOSVersion}
                 onChange={(e) => setFormData({ ...formData, maxOSVersion: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              />
+              >
+                <option value="">No limit</option>
+                {iosVersions.map((version) => (
+                  <option key={version} value={version}>iOS {version}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -588,6 +818,7 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
     date: new Date().toISOString().split('T')[0],
     localizedDescription: '',
     minOSVersion: '15.0',
+    maxOSVersion: '',
     visible: true,
   });
   const [error, setError] = useState('');
@@ -683,16 +914,33 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Min iOS Version *</label>
-            <input
-              type="text"
-              value={formData.minOSVersion}
-              onChange={(e) => setFormData({ ...formData, minOSVersion: e.target.value })}
-              placeholder="15.0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              required
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Min iOS Version *</label>
+              <select
+                value={formData.minOSVersion}
+                onChange={(e) => setFormData({ ...formData, minOSVersion: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                required
+              >
+                {iosVersions.map((version) => (
+                  <option key={version} value={version}>iOS {version}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Max iOS Version</label>
+              <select
+                value={formData.maxOSVersion}
+                onChange={(e) => setFormData({ ...formData, maxOSVersion: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              >
+                <option value="">No limit</option>
+                {iosVersions.map((version) => (
+                  <option key={version} value={version}>iOS {version}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
@@ -715,7 +963,7 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
               className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
             />
             <label htmlFor="version-visible" className="text-sm font-medium text-gray-700">
-              Visible in source.json
+              Visible in source
             </label>
           </div>
 

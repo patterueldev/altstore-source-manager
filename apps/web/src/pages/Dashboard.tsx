@@ -43,12 +43,25 @@ export default function Dashboard() {
 
   const handleCopySourceUrl = async () => {
     try {
-      await navigator.clipboard.writeText(sourceUrl);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(sourceUrl);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = sourceUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
       setCopyFeedback('Copied!');
       setTimeout(() => setCopyFeedback(''), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);
-      setCopyFeedback('Failed to copy');
+      setCopyFeedback('Failed');
+      setTimeout(() => setCopyFeedback(''), 2000);
     }
   };
 
@@ -379,7 +392,7 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
               className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
             />
             <label htmlFor="visible" className="text-sm font-medium text-gray-700">
-              Visible in source.json
+              Visible in source
             </label>
           </div>
 

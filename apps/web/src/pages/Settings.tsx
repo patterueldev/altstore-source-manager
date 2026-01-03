@@ -32,6 +32,8 @@ export default function Settings() {
     featuredApps: [],
   });
   const [apps, setApps] = useState<App[]>([]);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [headerFile, setHeaderFile] = useState<File | null>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -82,9 +84,43 @@ export default function Settings() {
 
     setLoading(true);
     try {
+      // Upload icon if changed
+      if (iconFile) {
+        console.log('Uploading source icon:', iconFile.name);
+        const iconFormData = new FormData();
+        iconFormData.append('icon', iconFile);
+        const iconResponse = await api.post('/source-config/icon', iconFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        config.iconURL = iconResponse.data.iconURL;
+        console.log('Icon uploaded:', iconResponse.data.iconURL);
+      }
+
+      // Upload header if changed
+      if (headerFile) {
+        console.log('Uploading source header:', headerFile.name);
+        const headerFormData = new FormData();
+        headerFormData.append('header', headerFile);
+        const headerResponse = await api.post('/source-config/header', headerFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        config.headerURL = headerResponse.data.headerURL;
+        console.log('Header uploaded:', headerResponse.data.headerURL);
+      }
+
+      // Update config with potentially new image URLs
       await api.put('/source-config', config);
+      
+      // Clear file states after successful upload
+      setIconFile(null);
+      setHeaderFile(null);
+      
+      // Reload config to get updated URLs
+      await loadConfig();
+      
       setSuccess('Source settings updated successfully');
     } catch (err: any) {
+      console.error('Update error:', err);
       setError(err.response?.data?.error || 'Failed to update settings');
     } finally {
       setLoading(false);
@@ -159,27 +195,97 @@ export default function Settings() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Icon URL
+                Source Icon (PNG/JPEG)
               </label>
+              {config.iconURL && !iconFile ? (
+                <div className="space-y-2">
+                  <img 
+                    src={config.iconURL} 
+                    alt="Source Icon" 
+                    className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('icon-upload')?.click()}
+                    className="text-sm text-purple-600 hover:text-purple-700"
+                  >
+                    Change Icon
+                  </button>
+                </div>
+              ) : iconFile ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-green-600">✓ {iconFile.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => setIconFile(null)}
+                    className="text-sm text-purple-600 hover:text-purple-700"
+                  >
+                    Choose Different
+                  </button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                  <label htmlFor="icon-upload" className="cursor-pointer">
+                    <p className="text-sm text-gray-600">
+                      <span className="text-purple-600 font-medium">Click to upload</span> icon
+                    </p>
+                  </label>
+                </div>
+              )}
               <input
-                type="url"
-                value={config.iconURL}
-                onChange={(e) => setConfig({ ...config, iconURL: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="https://example.com/source-icon.png"
+                type="file"
+                id="icon-upload"
+                accept="image/png,image/jpeg"
+                onChange={(e) => setIconFile(e.target.files?.[0] || null)}
+                className="hidden"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Header URL
+                Header Image (PNG/JPEG)
               </label>
+              {config.headerURL && !headerFile ? (
+                <div className="space-y-2">
+                  <img 
+                    src={config.headerURL} 
+                    alt="Source Header" 
+                    className="w-full max-w-md h-32 object-cover rounded-lg border-2 border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('header-upload')?.click()}
+                    className="text-sm text-purple-600 hover:text-purple-700"
+                  >
+                    Change Header
+                  </button>
+                </div>
+              ) : headerFile ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-green-600">✓ {headerFile.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => setHeaderFile(null)}
+                    className="text-sm text-purple-600 hover:text-purple-700"
+                  >
+                    Choose Different
+                  </button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                  <label htmlFor="header-upload" className="cursor-pointer">
+                    <p className="text-sm text-gray-600">
+                      <span className="text-purple-600 font-medium">Click to upload</span> header
+                    </p>
+                  </label>
+                </div>
+              )}
               <input
-                type="url"
-                value={config.headerURL}
-                onChange={(e) => setConfig({ ...config, headerURL: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="https://example.com/source-header.png"
+                type="file"
+                id="header-upload"
+                accept="image/png,image/jpeg"
+                onChange={(e) => setHeaderFile(e.target.files?.[0] || null)}
+                className="hidden"
               />
             </div>
 
