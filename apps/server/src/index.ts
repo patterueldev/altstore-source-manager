@@ -46,6 +46,30 @@ app.use('/api/auth', authRoutes);
 app.use('/api/apps', appRoutes);
 app.use('/api/versions', versionRoutes);
 
+// Filter null, undefined, and empty values recursively
+function filterNull(obj: any): any {
+  if (Array.isArray(obj)) {
+    // Filter items and remove empties, then map each item
+    const filtered = obj
+      .filter(item => item !== null && item !== undefined && item !== '')
+      .map(filterNull);
+    // Only return array if it has items
+    return filtered.length > 0 ? filtered : undefined;
+  }
+  if (obj !== null && typeof obj === 'object') {
+    const filtered: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      // Skip null, undefined, empty string, and empty array values
+      if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+        continue;
+      }
+      filtered[key] = filterNull(value);
+    }
+    return Object.keys(filtered).length > 0 ? filtered : undefined;
+  }
+  return obj;
+}
+
 // Placeholder: Source JSON endpoint
 app.get('/source.json', async (req, res) => {
   try {
@@ -53,19 +77,16 @@ app.get('/source.json', async (req, res) => {
     const sourceApps = await Promise.all(apps.map(async (app) => {
       const versions = await Version.find({ appId: app._id }).sort({ date: -1 });
       
+      // Only include classic format fields
       return {
         name: app.name,
         bundleIdentifier: app.bundleIdentifier,
-        marketplaceID: app.marketplaceID,
         developerName: app.developerName,
         subtitle: app.subtitle,
         localizedDescription: app.localizedDescription,
         iconURL: app.iconURL,
         tintColor: app.tintColor,
-        category: app.category,
         screenshots: app.screenshots,
-        appPermissions: app.appPermissions,
-        patreon: app.patreon,
         versions: versions.map(v => ({
           version: v.version,
           buildVersion: v.buildVersion,
@@ -80,7 +101,7 @@ app.get('/source.json', async (req, res) => {
       };
     }));
 
-    res.json({
+    const source = {
       name: process.env.SOURCE_NAME || 'AltStore Source',
       subtitle: process.env.SOURCE_SUBTITLE,
       description: process.env.SOURCE_DESCRIPTION,
@@ -93,7 +114,12 @@ app.get('/source.json', async (req, res) => {
       featuredApps: process.env.SOURCE_FEATURED_APPS?.split(',').filter(Boolean) || [],
       apps: sourceApps,
       news: [],
-    });
+    };
+
+    // Filter null/empty values
+    const filteredSource = filterNull(source);
+
+    res.json(filteredSource);
   } catch (error) {
     console.error('Source generation error:', error);
     res.status(500).json({ error: 'Failed to generate source' });
@@ -137,7 +163,7 @@ async function initializeMinIO() {
     secretKey: process.env.MINIO_SECRET_KEY || 'devsecret',
   });
 
-  const buckets = ['ipas', 'icons'];
+  const buckets = ['ipas', 'icons', 'screenshots'];
   
   for (const bucket of buckets) {
     try {

@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IVersion extends Document {
   appId: mongoose.Types.ObjectId;
   version: string;
-  buildVersion?: string;
+  buildVersion: string;
   date: Date;
   localizedDescription?: string;
   downloadURL: string;
@@ -11,6 +11,7 @@ export interface IVersion extends Document {
   minOSVersion: string;
   maxOSVersion?: string;
   sha256: string;
+  screenshots?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,7 +26,10 @@ const VersionSchema = new Schema<IVersion>({
     type: String,
     required: true,
   },
-  buildVersion: String,
+  buildVersion: {
+    type: String,
+    required: true,
+  },
   date: {
     type: Date,
     required: true,
@@ -48,6 +52,7 @@ const VersionSchema = new Schema<IVersion>({
     type: String,
     required: true,
   },
+  screenshots: [String],
 }, {
   timestamps: true,
 });

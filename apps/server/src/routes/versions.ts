@@ -55,8 +55,8 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
   try {
     const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion } = req.body;
 
-    if (!appId || !version || !date || !minOSVersion) {
-      return res.status(400).json({ error: 'appId, version, date, and minOSVersion are required' });
+    if (!appId || !version || !buildVersion || !date || !minOSVersion) {
+      return res.status(400).json({ error: 'appId, version, buildVersion, date, and minOSVersion are required' });
     }
 
     // Verify app exists
@@ -169,6 +169,49 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Delete version error:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Upload version screenshots (authenticated)
+router.post('/:id/screenshots', authMiddleware, upload.array('screenshots', 10), async (req, res) => {
+  try {
+    const versionDoc = await Version.findById(req.params.id);
+    if (!versionDoc) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'Screenshot files are required' });
+    }
+
+    const files = req.files as Express.Multer.File[];
+    const screenshotURLs: string[] = [];
+    const SCREENSHOTS_BUCKET = 'screenshots';
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const filename = `version-${req.params.id}-${Date.now()}-${i}.png`;
+
+      // Upload to MinIO
+      await minioClient.putObject(SCREENSHOTS_BUCKET, filename, file.buffer, file.size, {
+        'Content-Type': 'image/png',
+      });
+
+      const screenshotURL = `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/${SCREENSHOTS_BUCKET}/${filename}`;
+      screenshotURLs.push(screenshotURL);
+    }
+
+    // Append to existing screenshots or replace
+    if (!versionDoc.screenshots) {
+      versionDoc.screenshots = [];
+    }
+    versionDoc.screenshots.push(...screenshotURLs);
+    await versionDoc.save();
+
+    res.json({ screenshots: versionDoc.screenshots });
+  } catch (error) {
+    console.error('Upload screenshots error:', error);
+    res.status(500).json({ error: 'Failed to upload screenshots' });
   }
 });
 

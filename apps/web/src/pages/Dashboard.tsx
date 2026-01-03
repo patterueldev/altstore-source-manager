@@ -146,13 +146,10 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
     bundleIdentifier: '',
     developerName: '',
     subtitle: '',
-    iconURL: '',
-    marketplaceID: '',
-    category: '',
-    tintColor: '',
+    localizedDescription: '',
+    tintColor: '#F54F32',
   });
-  const [screenshots, setScreenshots] = useState<string[]>([]);
-  const [screenshotInput, setScreenshotInput] = useState('');
+  const [iconFile, setIconFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -162,7 +159,27 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
     setLoading(true);
 
     try {
-      await api.post('/apps', { ...formData, screenshots });
+      if (!iconFile) {
+        setError('Icon is required');
+        setLoading(false);
+        return;
+      }
+
+      // Create app first
+      const appResponse = await api.post('/apps', { 
+        ...formData,
+        iconURL: 'https://placeholder.com/icon.png', // Temporary placeholder
+      });
+      
+      const appId = appResponse.data._id;
+
+      // Upload icon
+      const formDataWithFile = new FormData();
+      formDataWithFile.append('icon', iconFile);
+      await api.post(`/apps/${appId}/icon`, formDataWithFile, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
       onSuccess();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create app');
@@ -171,20 +188,9 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
     }
   };
 
-  const addScreenshot = () => {
-    if (screenshotInput.trim()) {
-      setScreenshots([...screenshots, screenshotInput.trim()]);
-      setScreenshotInput('');
-    }
-  };
-
-  const removeScreenshot = (index: number) => {
-    setScreenshots(screenshots.filter((_, i) => i !== index));
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-semibold mb-4">Create New App</h3>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -242,99 +248,71 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Marketplace ID
+              Description
             </label>
-            <input
-              type="text"
-              value={formData.marketplaceID}
-              onChange={(e) => setFormData({ ...formData, marketplaceID: e.target.value })}
-              placeholder="12345678"
+            <textarea
+              value={formData.localizedDescription}
+              onChange={(e) => setFormData({ ...formData, localizedDescription: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              rows={3}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category
+              Tint Color *
             </label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="">Select category</option>
-              <option value="utilities">Utilities</option>
-              <option value="games">Games</option>
-              <option value="entertainment">Entertainment</option>
-              <option value="lifestyle">Lifestyle</option>
-              <option value="productivity">Productivity</option>
-              <option value="developer-tools">Developer Tools</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tint Color
-            </label>
-            <input
-              type="text"
-              value={formData.tintColor}
-              onChange={(e) => setFormData({ ...formData, tintColor: e.target.value })}
-              placeholder="#F54F32"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Icon URL
-            </label>
-            <input
-              type="url"
-              value={formData.iconURL}
-              onChange={(e) => setFormData({ ...formData, iconURL: e.target.value })}
-              placeholder="https://example.com/icon.png"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Screenshots
-            </label>
-            <div className="flex gap-2 mb-2">
+            <div className="flex gap-2">
               <input
-                type="url"
-                value={screenshotInput}
-                onChange={(e) => setScreenshotInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addScreenshot())}
-                placeholder="https://example.com/screenshot.png"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                type="color"
+                value={formData.tintColor}
+                onChange={(e) => setFormData({ ...formData, tintColor: e.target.value })}
+                className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
               />
-              <button
-                type="button"
-                onClick={addScreenshot}
-                className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Add
-              </button>
+              <input
+                type="text"
+                value={formData.tintColor}
+                onChange={(e) => setFormData({ ...formData, tintColor: e.target.value })}
+                placeholder="#F54F32"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+              />
             </div>
-            {screenshots.length > 0 && (
-              <div className="space-y-1">
-                {screenshots.map((url, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm">
-                    <span className="flex-1 truncate text-gray-600">{url}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeScreenshot(index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              App Icon (PNG) *
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              {iconFile ? (
+                <div>
+                  <p className="text-sm text-green-600 mb-2">✓ {iconFile.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => setIconFile(null)}
+                    className="text-sm text-purple-600 hover:text-purple-700"
+                  >
+                    Choose Different
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="image/png"
+                  onChange={(e) => setIconFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="icon-input"
+                  required
+                />
+              )}
+              <label htmlFor="icon-input" className="cursor-pointer">
+                {!iconFile && (
+                  <p className="text-sm text-gray-600">
+                    <span className="text-purple-600 font-medium">Click to upload</span> or drag and drop
+                  </p>
+                )}
+              </label>
+            </div>
           </div>
 
           {error && (

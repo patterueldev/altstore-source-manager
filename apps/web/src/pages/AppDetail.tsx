@@ -252,16 +252,12 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
   const [formData, setFormData] = useState({
     name: app.name,
     bundleIdentifier: app.bundleIdentifier,
-    marketplaceID: app.marketplaceID || '',
     developerName: app.developerName,
     subtitle: app.subtitle || '',
     localizedDescription: app.localizedDescription || '',
-    iconURL: app.iconURL || '',
-    tintColor: app.tintColor || '',
-    category: app.category || '',
+    tintColor: app.tintColor || '#F54F32',
   });
-  const [screenshots, setScreenshots] = useState<string[]>(app.screenshots || []);
-  const [screenshotInput, setScreenshotInput] = useState('');
+  const [iconFile, setIconFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -271,24 +267,23 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
     setLoading(true);
 
     try {
-      await api.put(`/apps/${app._id}`, { ...formData, screenshots });
+      await api.put(`/apps/${app._id}`, formData);
+      
+      // Upload icon if changed
+      if (iconFile) {
+        const iconFormData = new FormData();
+        iconFormData.append('icon', iconFile);
+        await api.post(`/apps/${app._id}/icon`, iconFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+      
       onSuccess();
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update app');
     } finally {
       setLoading(false);
     }
-  };
-
-  const addScreenshot = () => {
-    if (screenshotInput.trim()) {
-      setScreenshots([...screenshots, screenshotInput.trim()]);
-      setScreenshotInput('');
-    }
-  };
-
-  const removeScreenshot = (index: number) => {
-    setScreenshots(screenshots.filter((_, i) => i !== index));
   };
 
   return (
@@ -331,15 +326,6 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Marketplace ID</label>
-              <input
-                type="text"
-                value={formData.marketplaceID}
-                onChange={(e) => setFormData({ ...formData, marketplaceID: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
           </div>
 
           <div>
@@ -362,80 +348,56 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              >
-                <option value="">Select category</option>
-                <option value="utilities">Utilities</option>
-                <option value="games">Games</option>
-                <option value="entertainment">Entertainment</option>
-                <option value="lifestyle">Lifestyle</option>
-                <option value="productivity">Productivity</option>
-                <option value="developer-tools">Developer Tools</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tint Color</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tint Color *</label>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={formData.tintColor}
+                onChange={(e) => setFormData({ ...formData, tintColor: e.target.value })}
+                className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+              />
               <input
                 type="text"
                 value={formData.tintColor}
                 onChange={(e) => setFormData({ ...formData, tintColor: e.target.value })}
                 placeholder="#F54F32"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Icon URL</label>
-            <input
-              type="url"
-              value={formData.iconURL}
-              onChange={(e) => setFormData({ ...formData, iconURL: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Screenshots</label>
-            <div className="flex gap-2 mb-2">
-              <input
-                type="url"
-                value={screenshotInput}
-                onChange={(e) => setScreenshotInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addScreenshot())}
-                placeholder="https://example.com/screenshot.png"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
-              />
-              <button
-                type="button"
-                onClick={addScreenshot}
-                className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Add
-              </button>
+            <label className="block text-sm font-medium text-gray-700 mb-1">App Icon (PNG)</label>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              {iconFile ? (
+                <div>
+                  <p className="text-sm text-green-600 mb-2">✓ {iconFile.name}</p>
+                  <button
+                    type="button"
+                    onClick={() => setIconFile(null)}
+                    className="text-sm text-purple-600 hover:text-purple-700"
+                  >
+                    Choose Different
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="image/png"
+                  onChange={(e) => setIconFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="edit-icon-input"
+                />
+              )}
+              <label htmlFor="edit-icon-input" className="cursor-pointer">
+                {!iconFile && (
+                  <p className="text-sm text-gray-600">
+                    <span className="text-purple-600 font-medium">Click to upload</span> or drag and drop
+                  </p>
+                )}
+              </label>
             </div>
-            {screenshots.length > 0 && (
-              <div className="space-y-1">
-                {screenshots.map((url, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm">
-                    <span className="flex-1 truncate text-gray-600">{url}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeScreenshot(index)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
 
           {error && (
@@ -624,6 +586,11 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
       return;
     }
 
+    if (!formData.buildVersion) {
+      setError('Build version is required');
+      return;
+    }
+
     const data = new FormData();
     data.append('ipa', file);
     data.append('appId', appId);
@@ -674,13 +641,14 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Build Version</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Build Version *</label>
               <input
                 type="text"
                 value={formData.buildVersion}
                 onChange={(e) => setFormData({ ...formData, buildVersion: e.target.value })}
                 placeholder="60"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                required
               />
             </div>
           </div>
