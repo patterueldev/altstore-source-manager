@@ -214,8 +214,24 @@ async function initializeMinIO() {
       } else {
         console.log(`✓ MinIO bucket exists: ${bucket}`);
       }
+
+      // Set public read policy for the bucket
+      const policy = {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Effect: 'Allow',
+            Principal: { AWS: ['*'] },
+            Action: ['s3:GetObject'],
+            Resource: [`arn:aws:s3:::${bucket}/*`],
+          },
+        ],
+      };
+      
+      await minioClient.setBucketPolicy(bucket, JSON.stringify(policy));
+      console.log(`✓ Set public read policy for bucket: ${bucket}`);
     } catch (error) {
-      console.error(`Failed to create bucket ${bucket}:`, error);
+      console.error(`Failed to initialize bucket ${bucket}:`, error);
     }
   }
 }
