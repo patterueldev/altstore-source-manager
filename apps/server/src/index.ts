@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
+import { Client as MinioClient } from 'minio';
 import { User } from './models/User.js';
 import { App } from './models/App.js';
 import { Version } from './models/Version.js';
@@ -97,12 +98,42 @@ async function initializeAdmin() {
   }
 }
 
+// Initialize MinIO buckets
+async function initializeMinIO() {
+  const minioClient = new MinioClient({
+    endPoint: process.env.MINIO_ENDPOINT || 'minio',
+    port: parseInt(process.env.MINIO_PORT || '9000'),
+    useSSL: process.env.MINIO_USE_SSL === 'true',
+    accessKey: process.env.MINIO_ACCESS_KEY || 'devadmin',
+    secretKey: process.env.MINIO_SECRET_KEY || 'devsecret',
+  });
+
+  const buckets = ['ipas', 'icons'];
+  
+  for (const bucket of buckets) {
+    try {
+      const exists = await minioClient.bucketExists(bucket);
+      if (!exists) {
+        await minioClient.makeBucket(bucket, 'us-east-1');
+        console.log(`✓ Created MinIO bucket: ${bucket}`);
+      } else {
+        console.log(`✓ MinIO bucket exists: ${bucket}`);
+      }
+    } catch (error) {
+      console.error(`Failed to create bucket ${bucket}:`, error);
+    }
+  }
+}
+
 // Start server
 async function startServer() {
   try {
     // Connect to MongoDB
     await mongoose.connect(MONGO_URI);
     console.log('Connected to MongoDB');
+
+    // Initialize MinIO buckets
+    await initializeMinIO();
 
     // Initialize admin user
     await initializeAdmin();
