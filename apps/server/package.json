@@ -12,19 +12,19 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
-    "express": "catalog:",
-    "mongoose": "catalog:",
-    "dotenv": "catalog:",
-    "axios": "catalog:",
-    "minio": "catalog:"
+    "express": "^4.18.0",
+    "mongoose": "^8.0.0",
+    "dotenv": "^16.3.0",
+    "axios": "^1.6.0",
+    "minio": "^7.1.0"
   },
   "devDependencies": {
-    "typescript": "catalog:",
-    "@types/node": "catalog:",
-    "@types/express": "catalog:",
-    "vitest": "catalog:",
-    "eslint": "catalog:",
-    "prettier": "catalog:",
+    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0",
+    "@types/express": "^4.17.0",
+    "vitest": "^1.0.0",
+    "eslint": "^8.54.0",
+    "prettier": "^3.1.0",
     "tsx": "^4.6.0"
   }
 }
