@@ -76,20 +76,21 @@ export default function Dashboard() {
                 className="px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg"
               >
                 Logout
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="flex-1">
+              <p className="text-xs text-gray-600 mb-1">Source.json URL:</p>
+              <code className="text-sm text-gray-800">{sourceUrl}</code>
+            </div>
+            <button
+              onClick={handleCopySourceUrl}
+              className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 whitespace-nowrap"
+            >
+              {copyFeedback || 'Copy'}
             </button>
           </div>
-        </div>
-        <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-          <div className="flex-1">
-            <p className="text-xs text-gray-600 mb-1">Source.json URL:</p>
-            <code className="text-sm text-gray-800">{sourceUrl}</code>
-          </div>
-          <button
-            onClick={handleCopySourceUrl}
-            className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 whitespace-nowrap"
-          >
-            {copyFeedback || 'Copy'}
-          </button>
         </div>
       </header>
 
@@ -320,7 +321,7 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
               <div className="mt-2 p-3 bg-white border border-gray-200 rounded-lg">
                 <SketchPicker
                   color={formData.tintColor}
-                  onChange={(color) => setFormData({ ...formData, tintColor: color.hex })}
+                  onChange={(color: any) => setFormData({ ...formData, tintColor: color.hex })}
                 />
               </div>
             )}

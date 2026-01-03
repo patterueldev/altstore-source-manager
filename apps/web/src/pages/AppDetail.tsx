@@ -108,18 +108,6 @@ export default function AppDetail() {
               <span className="text-gray-500">Developer:</span>
               <span className="ml-2 font-medium">{app.developerName}</span>
             </div>
-            {app.category && (
-              <div>
-                <span className="text-gray-500">Category:</span>
-                <span className="ml-2 font-medium">{app.category}</span>
-              </div>
-            )}
-            {app.marketplaceID && (
-              <div>
-                <span className="text-gray-500">Marketplace ID:</span>
-                <span className="ml-2 font-medium">{app.marketplaceID}</span>
-              </div>
-            )}
             {app.tintColor && (
               <div className="flex items-center">
                 <span className="text-gray-500">Tint Color:</span>
@@ -373,7 +361,7 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
               <div className="mt-2 p-3 bg-white border border-gray-200 rounded-lg">
                 <SketchPicker
                   color={formData.tintColor}
-                  onChange={(color) => setFormData({ ...formData, tintColor: color.hex })}
+                  onChange={(color: any) => setFormData({ ...formData, tintColor: color.hex })}
                 />
               </div>
             )}
@@ -626,7 +614,7 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
     data.append('ipa', file);
     data.append('appId', appId);
     Object.entries(formData).forEach(([key, value]) => {
-      data.append(key, value);
+      data.append(key, String(value));
     });
 
     setLoading(true);
