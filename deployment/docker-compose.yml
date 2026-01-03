@@ -14,6 +14,7 @@ services:
       MINIO_PORT: ${MINIO_PORT:-9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-devadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-devsecret}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -31,7 +32,7 @@ services:
       - "5173:5173"
     environment:
       NODE_ENV: production
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+      VITE_API_URL: ${VITE_API_URL}
     depends_on:
       - server
     networks:
@@ -94,6 +95,8 @@ services:
       /usr/bin/mc config host add minio http://minio:9000 ${MINIO_ROOT_USER:-devadmin} ${MINIO_ROOT_PASSWORD:-devsecret};
       /usr/bin/mc mb minio/ipas --ignore-existing;
       /usr/bin/mc mb minio/icons --ignore-existing;
+      /usr/bin/mc mb minio/screenshots --ignore-existing;
+      /usr/bin/mc mb minio/source-images --ignore-existing;
       /usr/bin/mc version enable minio/ipas;
       exit 0;
       "

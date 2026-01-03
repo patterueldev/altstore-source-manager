@@ -22,6 +22,7 @@ interface Version {
   version: string;
   buildVersion: string;
   date: string;
+  createdAt?: string;
   localizedDescription: string;
   downloadURL: string;
   size: number;
@@ -51,9 +52,11 @@ export default function AppDetail() {
         api.get(`/versions/app/${id}`),
       ]);
       setApp(appRes.data);
-      // Sort versions by createdAt descending (latest uploaded first)
+      // Sort versions by createdAt (fallback to date) descending
       const sortedVersions = versionsRes.data.sort((a: Version, b: Version) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        const bTime = new Date(b.createdAt || b.date).getTime();
+        const aTime = new Date(a.createdAt || a.date).getTime();
+        return bTime - aTime;
       });
       setVersions(sortedVersions);
     } catch (error) {

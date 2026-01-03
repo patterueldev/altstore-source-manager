@@ -16,6 +16,7 @@ import authRoutes from './routes/auth.js';
 import appRoutes from './routes/apps.js';
 import versionRoutes from './routes/versions.js';
 import sourceConfigRoutes from './routes/sourceConfig.js';
+import { buildObjectUrl, getPublicBase } from './utils/publicUrl.js';
 
 dotenv.config();
 
@@ -25,6 +26,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://admin:password@mongodb:27017/altstore?authSource=admin';
+
+const minioClient = new MinioClient({
+  endPoint: process.env.MINIO_ENDPOINT || 'minio',
+  port: parseInt(process.env.MINIO_PORT || '9000'),
+  useSSL: process.env.MINIO_USE_SSL === 'true',
+  accessKey: process.env.MINIO_ACCESS_KEY || 'devadmin',
+  secretKey: process.env.MINIO_SECRET_KEY || 'devsecret',
+});
 
 // Middleware
 app.use(cors());
@@ -48,6 +57,39 @@ app.use('/api/auth', authRoutes);
 app.use('/api/apps', appRoutes);
 app.use('/api/versions', versionRoutes);
 app.use('/api/source-config', sourceConfigRoutes);
+
+// Optional public proxy to MinIO assets (single-origin access)
+app.get('/public/:bucket/*', async (req, res) => {
+  const { bucket } = req.params;
+  const objectKey = (req.params as Record<string, string>)['0'];
+
+  if (!objectKey) {
+    return res.status(400).json({ error: 'Object key required' });
+  }
+
+  try {
+    const stat = await minioClient.statObject(bucket, objectKey);
+    if (stat?.metaData) {
+      const contentType = stat.metaData['content-type'] || stat.metaData['Content-Type'];
+      if (contentType) {
+        res.setHeader('Content-Type', contentType);
+      }
+    }
+    const stream = await minioClient.getObject(bucket, objectKey);
+    stream.on('error', (err) => {
+      console.error('Proxy stream error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to stream object' });
+      } else {
+        res.end();
+      }
+    });
+    stream.pipe(res);
+  } catch (error) {
+    console.error('Proxy fetch error:', error);
+    res.status(404).json({ error: 'Object not found' });
+  }
+});
 
 // Serve React dashboard at /manager
 const distPath = path.join(__dirname, '../../../apps/web/dist');
@@ -204,14 +246,6 @@ async function initializeSourceConfig() {
 }
 // Initialize MinIO buckets
 async function initializeMinIO() {
-  const minioClient = new MinioClient({
-    endPoint: process.env.MINIO_ENDPOINT || 'minio',
-    port: parseInt(process.env.MINIO_PORT || '9000'),
-    useSSL: process.env.MINIO_USE_SSL === 'true',
-    accessKey: process.env.MINIO_ACCESS_KEY || 'devadmin',
-    secretKey: process.env.MINIO_SECRET_KEY || 'devsecret',
-  });
-
   const buckets = ['ipas', 'icons', 'screenshots', 'source-images'];
   
   for (const bucket of buckets) {

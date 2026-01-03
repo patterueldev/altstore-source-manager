@@ -5,6 +5,7 @@ import { App } from '../models/App.js';
 import { Version } from '../models/Version.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
+import { buildObjectUrl } from '../utils/publicUrl.js';
 
 const router: Router = express.Router();
 
@@ -140,8 +141,8 @@ router.post('/:id/icon', authMiddleware, upload.single('icon'), async (req, res)
       'Content-Type': 'image/png',
     });
 
-    // Generate download URL
-    const iconURL = `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/${ICONS_BUCKET}/${filename}`;
+    // Generate download URL (host-aware)
+    const iconURL = buildObjectUrl(ICONS_BUCKET, filename, req);
 
     app.iconURL = iconURL;
     await app.save();
@@ -177,7 +178,7 @@ router.post('/:id/screenshots', authMiddleware, upload.array('screenshots', 10),
         'Content-Type': 'image/png',
       });
 
-      const screenshotURL = `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/${SCREENSHOTS_BUCKET}/${filename}`;
+      const screenshotURL = buildObjectUrl(SCREENSHOTS_BUCKET, filename, req);
       screenshotURLs.push(screenshotURL);
     }
 

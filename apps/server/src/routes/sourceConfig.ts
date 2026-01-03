@@ -3,6 +3,7 @@ import multer from 'multer';
 import { SourceConfig } from '../models/SourceConfig.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
+import { buildObjectUrl } from '../utils/publicUrl.js';
 
 const router: Router = express.Router();
 
@@ -122,7 +123,7 @@ router.post('/icon', authMiddleware, upload.single('icon'), async (req, res) => 
     });
 
     // Generate download URL
-    const iconURL = `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/${SOURCE_IMAGES_BUCKET}/${filename}`;
+    const iconURL = buildObjectUrl(SOURCE_IMAGES_BUCKET, filename, req, true);
 
     // Update config
     config.iconURL = iconURL;
@@ -156,7 +157,7 @@ router.post('/header', authMiddleware, upload.single('header'), async (req, res)
     });
 
     // Generate download URL
-    const headerURL = `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/${SOURCE_IMAGES_BUCKET}/${filename}`;
+    const headerURL = buildObjectUrl(SOURCE_IMAGES_BUCKET, filename, req, true);
 
     // Update config
     config.headerURL = headerURL;

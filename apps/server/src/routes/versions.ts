@@ -5,6 +5,7 @@ import { Version } from '../models/Version.js';
 import { App } from '../models/App.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
+import { buildObjectUrl } from '../utils/publicUrl.js';
 
 const router: Router = express.Router();
 
@@ -24,6 +25,20 @@ const minioClient = new MinioClient({
 });
 
 const BUCKET_NAME = 'ipas';
+const ADMIN_SHARED_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
+
+function validateCiSecret(req: express.Request, res: express.Response): boolean {
+  if (!ADMIN_SHARED_SECRET) {
+    res.status(500).json({ error: 'Admin secret not configured on server' });
+    return false;
+  }
+  const provided = req.header('x-admin-secret');
+  if (provided !== ADMIN_SHARED_SECRET) {
+    res.status(401).json({ error: 'Invalid admin secret' });
+    return false;
+  }
+  return true;
+}
 
 // Get all versions for an app (protected)
 router.get('/app/:appId', authMiddleware, async (req, res) => {
@@ -88,7 +103,7 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
     });
 
     // Generate download URL
-    const downloadURL = `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/${BUCKET_NAME}/${filename}`;
+    const downloadURL = buildObjectUrl(BUCKET_NAME, filename, req);
 
     // Create version record
     const versionDoc = new Version({
@@ -112,6 +127,67 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
       return res.status(400).json({ error: 'Version already exists for this app' });
     }
     console.error('Create version error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// CI upload endpoint using admin secret header (x-admin-secret)
+router.post('/ci-upload', upload.single('ipa'), async (req, res) => {
+  if (!validateCiSecret(req, res)) return;
+
+  try {
+    const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion, visible } = req.body;
+
+    if (!appId || !version || !buildVersion || !date || !minOSVersion || !localizedDescription) {
+      return res.status(400).json({ error: 'appId, version, buildVersion, date, minOSVersion, and localizedDescription are required' });
+    }
+
+    const app = await App.findById(appId);
+    if (!app) {
+      return res.status(404).json({ error: 'App not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'IPA file is required' });
+    }
+
+    const file = req.file;
+    const fileBuffer = file.buffer;
+    const fileSize = file.size;
+
+    const hash = crypto.createHash('sha256');
+    hash.update(fileBuffer);
+    const sha256 = hash.digest('hex');
+
+    const filename = `${app.bundleIdentifier}-${version}-${Date.now()}.ipa`;
+
+    await minioClient.putObject(BUCKET_NAME, filename, fileBuffer, fileSize, {
+      'Content-Type': 'application/octet-stream',
+    });
+
+    const downloadURL = buildObjectUrl(BUCKET_NAME, filename, req);
+
+    const versionDoc = new Version({
+      appId,
+      version,
+      buildVersion,
+      date: new Date(date),
+      localizedDescription,
+      downloadURL,
+      size: fileSize,
+      minOSVersion,
+      maxOSVersion,
+      sha256,
+      visible: visible !== undefined ? visible : true,
+    });
+
+    await versionDoc.save();
+    res.status(201).json(versionDoc);
+  } catch (error: any) {
+    if (error.code === 11000) {
+      return res.status(400).json({ error: 'Version already exists for this app' });
+    }
+    console.error('CI upload version error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -199,7 +275,7 @@ router.post('/:id/screenshots', authMiddleware, upload.array('screenshots', 10),
         'Content-Type': 'image/png',
       });
 
-      const screenshotURL = `${process.env.MINIO_PUBLIC_URL || 'http://localhost:9000'}/${SCREENSHOTS_BUCKET}/${filename}`;
+      const screenshotURL = buildObjectUrl(SCREENSHOTS_BUCKET, filename, req);
       screenshotURLs.push(screenshotURL);
     }
 

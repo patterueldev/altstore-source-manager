@@ -15,7 +15,7 @@ services:
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: devadmin
       MINIO_SECRET_KEY: devsecret
-      MINIO_PUBLIC_URL: http://thursday.local:9000
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
     depends_on:
       mongodb:
         condition: service_healthy
