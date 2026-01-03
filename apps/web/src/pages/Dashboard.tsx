@@ -66,6 +66,12 @@ export default function Dashboard() {
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Hi, {user?.username}</span>
               <button
+                onClick={() => navigate('/profile')}
+                className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Profile
+              </button>
+              <button
                 onClick={() => navigate('/settings')}
                 className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
               >

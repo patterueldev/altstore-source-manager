@@ -11,9 +11,11 @@ import { fileURLToPath } from 'url';
 import { User } from './models/User.js';
 import { App } from './models/App.js';
 import { Version } from './models/Version.js';
+import { SourceConfig } from './models/SourceConfig.js';
 import authRoutes from './routes/auth.js';
 import appRoutes from './routes/apps.js';
 import versionRoutes from './routes/versions.js';
+import sourceConfigRoutes from './routes/sourceConfig.js';
 
 dotenv.config();
 
@@ -45,6 +47,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/apps', appRoutes);
 app.use('/api/versions', versionRoutes);
+app.use('/api/source-config', sourceConfigRoutes);
 
 // Filter null, undefined, and empty values recursively
 function filterNull(obj: any): any {
@@ -73,6 +76,14 @@ function filterNull(obj: any): any {
 // Placeholder: Source JSON endpoint
 app.get('/source.json', async (req, res) => {
   try {
+    // Get source config from database
+    let config = await SourceConfig.findOne();
+    if (!config) {
+      config = await new SourceConfig({
+        name: process.env.SOURCE_NAME || 'AltStore Source',
+      }).save();
+    }
+
     const apps = await App.find({ visible: true });
     const sourceApps = await Promise.all(apps.map(async (app) => {
       const versions = await Version.find({ appId: app._id, visible: true }).sort({ date: -1 });
@@ -101,17 +112,21 @@ app.get('/source.json', async (req, res) => {
       };
     }));
 
+    // Filter featuredApps to only include existing bundleIdentifiers
+    const existingBundleIds = sourceApps.map(app => app.bundleIdentifier);
+    const validFeaturedApps = config.featuredApps.filter(bundleId => 
+      existingBundleIds.includes(bundleId)
+    );
+
     const source = {
-      name: process.env.SOURCE_NAME || 'AltStore Source',
-      subtitle: process.env.SOURCE_SUBTITLE,
-      description: process.env.SOURCE_DESCRIPTION,
-      iconURL: process.env.SOURCE_ICON_URL,
-      headerURL: process.env.SOURCE_HEADER_URL,
-      website: process.env.SOURCE_WEBSITE,
-      patreonURL: process.env.SOURCE_PATREON_URL,
-      tintColor: process.env.SOURCE_TINT_COLOR,
-      identifier: process.env.SOURCE_IDENTIFIER || 'com.example.source',
-      featuredApps: process.env.SOURCE_FEATURED_APPS?.split(',').filter(Boolean) || [],
+      name: config.name,
+      subtitle: config.subtitle,
+      description: config.description,
+      iconURL: config.iconURL,
+      headerURL: config.headerURL,
+      website: config.website,
+      tintColor: config.tintColor,
+      featuredApps: validFeaturedApps,
       apps: sourceApps,
       news: [],
     };
@@ -152,7 +167,32 @@ async function initializeAdmin() {
     console.error('Failed to initialize admin user:', error);
   }
 }
+// Initialize source config
+async function initializeSourceConfig() {
+  try {
+    const existingConfig = await SourceConfig.findOne();
+    if (existingConfig) {
+      console.log('Source config already exists');
+      return;
+    }
 
+    const config = new SourceConfig({
+      name: process.env.SOURCE_NAME || 'AltStore Source',
+      subtitle: process.env.SOURCE_SUBTITLE,
+      description: process.env.SOURCE_DESCRIPTION,
+      iconURL: process.env.SOURCE_ICON_URL,
+      headerURL: process.env.SOURCE_HEADER_URL,
+      website: process.env.SOURCE_WEBSITE,
+      tintColor: process.env.SOURCE_TINT_COLOR,
+      featuredApps: process.env.SOURCE_FEATURED_APPS?.split(',').filter(Boolean) || [],
+    });
+
+    await config.save();
+    console.log('✓ Source config initialized');
+  } catch (error) {
+    console.error('Failed to initialize source config:', error);
+  }
+}
 // Initialize MinIO buckets
 async function initializeMinIO() {
   const minioClient = new MinioClient({
@@ -192,6 +232,9 @@ async function startServer() {
 
     // Initialize admin user
     await initializeAdmin();
+
+    // Initialize source config
+    await initializeSourceConfig();
 
     // Start listening
     app.listen(PORT, () => {
