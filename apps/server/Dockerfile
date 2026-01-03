@@ -31,8 +31,8 @@ COPY --from=builder /app/pnpm-workspace.yaml ./
 # Copy built server code
 COPY --from=builder /app/apps/server ./apps/server
 
-# Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
+# Copy node_modules from builder (important for dev mode)
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 

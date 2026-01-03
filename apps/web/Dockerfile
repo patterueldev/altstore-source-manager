@@ -20,11 +20,19 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install a lightweight HTTP server to serve the built app
-RUN npm install -g serve
+# Install pnpm globally
+RUN npm install -g pnpm@10.0.0 && npm install -g serve
+
+# Copy package files from builder
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
 
 # Copy built web app from builder
-COPY --from=builder /app/apps/web/dist ./dist
+COPY --from=builder /app/apps/web ./apps/web
+
+# Copy node_modules from builder for dev mode
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 5173
 

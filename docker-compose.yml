@@ -24,7 +24,7 @@ services:
         condition: service_healthy
     networks:
       - altstore-network
-    command: npm run -w @altstore/server dev
+    command: pnpm --filter @altstore/server dev
 
   # Frontend Web (React + Vite)
   web:
@@ -45,7 +45,7 @@ services:
       - server
     networks:
       - altstore-network
-    command: npm run -w @altstore/web dev
+    command: sh -c "cd /app/apps/web && pnpm dev"
 
   # MongoDB Database
   mongodb:
