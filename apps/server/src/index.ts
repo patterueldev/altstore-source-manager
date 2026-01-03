@@ -49,6 +49,15 @@ app.use('/api/apps', appRoutes);
 app.use('/api/versions', versionRoutes);
 app.use('/api/source-config', sourceConfigRoutes);
 
+// Serve React dashboard at /manager
+const distPath = path.join(__dirname, '../../../apps/web/dist');
+app.use('/manager', express.static(distPath));
+
+// Catch-all for React Router: serve index.html for /manager/* paths
+app.get('/manager/*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
 // Filter null, undefined, and empty values recursively
 function filterNull(obj: any): any {
   if (Array.isArray(obj)) {
@@ -73,8 +82,8 @@ function filterNull(obj: any): any {
   return obj;
 }
 
-// Placeholder: Source JSON endpoint
-app.get('/source.json', async (req, res) => {
+// Source endpoint (root path)
+app.get('/', async (req, res) => {
   try {
     // Get source config from database
     let config = await SourceConfig.findOne();

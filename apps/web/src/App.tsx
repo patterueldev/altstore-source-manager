@@ -9,7 +9,7 @@ import Profile from './pages/Profile';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/manager">
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />

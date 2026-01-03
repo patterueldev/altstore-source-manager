@@ -24,8 +24,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const envUrl = import.meta.env.VITE_SOURCE_SERVER_URL || 'http://localhost:3000';
-    setSourceUrl(`${envUrl}/source.json`);
+    // Source is at root path / - use API URL domain
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    setSourceUrl(API_URL);
     fetchApps();
   }, []);
 

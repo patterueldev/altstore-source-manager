@@ -1,10 +1,11 @@
 services:
-  # Backend Server (Express.js)
-  server:
+  # Unified Backend Server (Express.js + React Dashboard)
+  # Serves: / → source.json, /manager → dashboard UI, /api/* → API endpoints
+  web:
     build:
       context: .
       dockerfile: ./apps/server/Dockerfile
-    container_name: altstore-server
+    container_name: altstore-manager-web
     ports:
       - "3000:3000"
     environment:
@@ -14,43 +15,18 @@ services:
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: devadmin
       MINIO_SECRET_KEY: devsecret
-    volumes:
-      - ./apps/server/src:/app/apps/server/src
-      - ./apps/server/package.json:/app/apps/server/package.json
     depends_on:
       mongodb:
         condition: service_healthy
       minio:
         condition: service_healthy
     networks:
-      - altstore-network
-    command: sh -c "pnpm --filter @altstore/server build && node apps/server/dist/index.js"
-
-  # Frontend Web (React + Vite)
-  web:
-    build:
-      context: .
-      dockerfile: ./apps/web/Dockerfile
-    container_name: altstore-web
-    ports:
-      - "5173:5173"
-    environment:
-      NODE_ENV: development
-      VITE_API_URL: http://localhost:3000
-    volumes:
-      - ./apps/web/src:/app/apps/web/src
-      - ./apps/web/package.json:/app/apps/web/package.json
-      - ./apps/web/vite.config.ts:/app/apps/web/vite.config.ts
-    depends_on:
-      - server
-    networks:
-      - altstore-network
-    command: sh -c "cd /app/apps/web && pnpm dev"
+      - altstore-manager-network
 
   # MongoDB Database
   mongodb:
     image: mongo:7.0
-    container_name: altstore-mongodb
+    container_name: altstore-manager-mongodb
     ports:
       - "27017:27017"
     environment:
@@ -67,12 +43,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - altstore-network
+      - altstore-manager-network
 
   # MinIO S3-compatible Storage
   minio:
     image: minio/minio:latest
-    container_name: altstore-minio
+    container_name: altstore-manager-minio
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -88,12 +64,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - altstore-network
+      - altstore-manager-network
 
   # MinIO initialization (create buckets)
   minio-init:
     image: minio/mc:latest
-    container_name: altstore-minio-init
+    container_name: altstore-manager-minio-init
     depends_on:
       minio:
         condition: service_healthy
@@ -106,7 +82,7 @@ services:
       exit 0;
       "
     networks:
-      - altstore-network
+      - altstore-manager-network
 
 volumes:
   mongodb_data:
@@ -117,5 +93,5 @@ volumes:
     driver: local
 
 networks:
-  altstore-network:
+  altstore-manager-network:
     driver: bridge

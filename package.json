@@ -9,7 +9,8 @@
     "build": "pnpm -r run build",
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
-    "type-check": "pnpm -r run type-check"
+    "type-check": "pnpm -r run type-check",
+    "reset-admin": "cd /app/apps/server && node scripts/reset-admin.js"
   },
   "pnpm": {
     "catalogs": {
