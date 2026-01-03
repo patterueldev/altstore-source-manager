@@ -26,8 +26,8 @@ const minioClient = new MinioClient({
 const ICONS_BUCKET = 'icons';
 const SCREENSHOTS_BUCKET = 'screenshots';
 
-// Get all apps
-router.get('/', async (req, res) => {
+// Get all apps (protected)
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const apps = await App.find().sort({ createdAt: -1 });
     res.json(apps);
@@ -37,8 +37,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get single app
-router.get('/:id', async (req, res) => {
+// Get single app (protected)
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const app = await App.findById(req.params.id);
     if (!app) {
@@ -56,11 +56,11 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     const { 
       name, bundleIdentifier, developerName, subtitle, 
-      localizedDescription, iconURL, tintColor, screenshots
+      localizedDescription, iconURL, tintColor, screenshots, visible
     } = req.body;
 
-    if (!name || !bundleIdentifier || !developerName || !iconURL || !tintColor) {
-      return res.status(400).json({ error: 'Name, bundleIdentifier, developerName, iconURL, and tintColor are required' });
+    if (!name || !bundleIdentifier || !developerName || !iconURL || !tintColor || !localizedDescription) {
+      return res.status(400).json({ error: 'Name, bundleIdentifier, developerName, iconURL, tintColor, and localizedDescription are required' });
     }
 
     const app = new App({
@@ -72,6 +72,7 @@ router.post('/', authMiddleware, async (req, res) => {
       iconURL,
       tintColor,
       screenshots: screenshots || [],
+      visible: visible !== undefined ? visible : true,
     });
 
     await app.save();
@@ -90,7 +91,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { 
       name, bundleIdentifier, developerName, subtitle, 
-      localizedDescription, iconURL, tintColor, screenshots
+      localizedDescription, iconURL, tintColor, screenshots, visible
     } = req.body;
     
     const app = await App.findById(req.params.id);
@@ -106,6 +107,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (iconURL !== undefined) app.iconURL = iconURL;
     if (tintColor !== undefined) app.tintColor = tintColor;
     if (screenshots !== undefined) app.screenshots = screenshots;
+    if (visible !== undefined) app.visible = visible;
 
     await app.save();
     res.json(app);

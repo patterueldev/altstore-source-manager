@@ -73,9 +73,9 @@ function filterNull(obj: any): any {
 // Placeholder: Source JSON endpoint
 app.get('/source.json', async (req, res) => {
   try {
-    const apps = await App.find();
+    const apps = await App.find({ visible: true });
     const sourceApps = await Promise.all(apps.map(async (app) => {
-      const versions = await Version.find({ appId: app._id }).sort({ date: -1 });
+      const versions = await Version.find({ appId: app._id, visible: true }).sort({ date: -1 });
       
       // Only include classic format fields
       return {

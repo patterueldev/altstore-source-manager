@@ -1,31 +1,32 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { SketchPicker } from 'react-color';
 import { api } from '../lib/api';
 
 interface App {
   _id: string;
   name: string;
   bundleIdentifier: string;
-  marketplaceID?: string;
   developerName: string;
   subtitle?: string;
   localizedDescription?: string;
   iconURL?: string;
   tintColor?: string;
-  category?: string;
   screenshots?: string[];
+  visible?: boolean;
 }
 
 interface Version {
   _id: string;
   version: string;
-  buildVersion?: string;
+  buildVersion: string;
   date: string;
-  localizedDescription?: string;
+  localizedDescription: string;
   downloadURL: string;
   size: number;
   minOSVersion: string;
   maxOSVersion?: string;
+  visible?: boolean;
 }
 
 export default function AppDetail() {
@@ -256,8 +257,10 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
     subtitle: app.subtitle || '',
     localizedDescription: app.localizedDescription || '',
     tintColor: app.tintColor || '#F54F32',
+    visible: app.visible !== undefined ? app.visible : true,
   });
   const [iconFile, setIconFile] = useState<File | null>(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -339,23 +342,24 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
             <textarea
               value={formData.localizedDescription}
               onChange={(e) => setFormData({ ...formData, localizedDescription: e.target.value })}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              required
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Tint Color *</label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={formData.tintColor}
-                onChange={(e) => setFormData({ ...formData, tintColor: e.target.value })}
-                className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="w-12 h-10 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-purple-500"
+                style={{ backgroundColor: formData.tintColor }}
               />
               <input
                 type="text"
@@ -365,6 +369,14 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
               />
             </div>
+            {showColorPicker && (
+              <div className="mt-2 p-3 bg-white border border-gray-200 rounded-lg">
+                <SketchPicker
+                  color={formData.tintColor}
+                  onChange={(color) => setFormData({ ...formData, tintColor: color.hex })}
+                />
+              </div>
+            )}
           </div>
 
           <div>
@@ -398,6 +410,19 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
                 )}
               </label>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="app-visible"
+              checked={formData.visible}
+              onChange={(e) => setFormData({ ...formData, visible: e.target.checked })}
+              className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+            />
+            <label htmlFor="app-visible" className="text-sm font-medium text-gray-700">
+              Visible in source.json
+            </label>
           </div>
 
           {error && (
@@ -575,6 +600,7 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
     date: new Date().toISOString().split('T')[0],
     localizedDescription: '',
     minOSVersion: '15.0',
+    visible: true,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -588,6 +614,11 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
 
     if (!formData.buildVersion) {
       setError('Build version is required');
+      return;
+    }
+
+    if (!formData.localizedDescription.trim()) {
+      setError('Release notes are required');
       return;
     }
 
@@ -677,13 +708,27 @@ function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalPro
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Release Notes</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Release Notes *</label>
             <textarea
               value={formData.localizedDescription}
               onChange={(e) => setFormData({ ...formData, localizedDescription: e.target.value })}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              required
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="version-visible"
+              checked={formData.visible}
+              onChange={(e) => setFormData({ ...formData, visible: e.target.checked })}
+              className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+            />
+            <label htmlFor="version-visible" className="text-sm font-medium text-gray-700">
+              Visible in source.json
+            </label>
           </div>
 
           {error && (

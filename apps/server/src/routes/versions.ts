@@ -25,8 +25,8 @@ const minioClient = new MinioClient({
 
 const BUCKET_NAME = 'ipas';
 
-// Get all versions for an app
-router.get('/app/:appId', async (req, res) => {
+// Get all versions for an app (protected)
+router.get('/app/:appId', authMiddleware, async (req, res) => {
   try {
     const versions = await Version.find({ appId: req.params.appId }).sort({ date: -1 });
     res.json(versions);
@@ -36,8 +36,8 @@ router.get('/app/:appId', async (req, res) => {
   }
 });
 
-// Get single version
-router.get('/:id', async (req, res) => {
+// Get single version (protected)
+router.get('/:id', authMiddleware, async (req, res) => {
   try {
     const version = await Version.findById(req.params.id);
     if (!version) {
@@ -53,10 +53,10 @@ router.get('/:id', async (req, res) => {
 // Create version with IPA upload (authenticated)
 router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
   try {
-    const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion } = req.body;
+    const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion, visible } = req.body;
 
-    if (!appId || !version || !buildVersion || !date || !minOSVersion) {
-      return res.status(400).json({ error: 'appId, version, buildVersion, date, and minOSVersion are required' });
+    if (!appId || !version || !buildVersion || !date || !minOSVersion || !localizedDescription) {
+      return res.status(400).json({ error: 'appId, version, buildVersion, date, minOSVersion, and localizedDescription are required' });
     }
 
     // Verify app exists
@@ -102,6 +102,7 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
       minOSVersion,
       maxOSVersion,
       sha256,
+      visible: visible !== undefined ? visible : true,
     });
 
     await versionDoc.save();
@@ -118,7 +119,7 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
 // Update version (authenticated)
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const { version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion } = req.body;
+    const { version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion, visible } = req.body;
     
     const versionDoc = await Version.findById(req.params.id);
     if (!versionDoc) {
@@ -131,6 +132,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (localizedDescription !== undefined) versionDoc.localizedDescription = localizedDescription;
     if (minOSVersion) versionDoc.minOSVersion = minOSVersion;
     if (maxOSVersion !== undefined) versionDoc.maxOSVersion = maxOSVersion;
+    if (visible !== undefined) versionDoc.visible = visible;
 
     await versionDoc.save();
     res.json(versionDoc);

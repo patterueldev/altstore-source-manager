@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { SketchPicker } from 'react-color';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -10,16 +11,21 @@ interface App {
   developerName: string;
   subtitle?: string;
   iconURL?: string;
+  visible?: boolean;
 }
 
 export default function Dashboard() {
   const [apps, setApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState<string>('');
+  const [copyFeedback, setCopyFeedback] = useState('');
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
+    const envUrl = import.meta.env.VITE_SOURCE_SERVER_URL || 'http://localhost:3000';
+    setSourceUrl(`${envUrl}/source.json`);
     fetchApps();
   }, []);
 
@@ -34,6 +40,17 @@ export default function Dashboard() {
     }
   };
 
+  const handleCopySourceUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(sourceUrl);
+      setCopyFeedback('Copied!');
+      setTimeout(() => setCopyFeedback(''), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      setCopyFeedback('Failed to copy');
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -43,23 +60,36 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">AltStore Manager</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">Hi, {user?.username}</span>
-            <button
-              onClick={() => navigate('/settings')}
-              className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
-            >
-              Settings
-            </button>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg"
-            >
-              Logout
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold text-gray-900">AltStore Manager</h1>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">Hi, {user?.username}</span>
+              <button
+                onClick={() => navigate('/settings')}
+                className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Settings
+              </button>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg"
+              >
+                Logout
             </button>
           </div>
+        </div>
+        <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+          <div className="flex-1">
+            <p className="text-xs text-gray-600 mb-1">Source.json URL:</p>
+            <code className="text-sm text-gray-800">{sourceUrl}</code>
+          </div>
+          <button
+            onClick={handleCopySourceUrl}
+            className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 whitespace-nowrap"
+          >
+            {copyFeedback || 'Copy'}
+          </button>
         </div>
       </header>
 
@@ -148,8 +178,10 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
     subtitle: '',
     localizedDescription: '',
     tintColor: '#F54F32',
+    visible: true,
   });
   const [iconFile, setIconFile] = useState<File | null>(null);
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -161,6 +193,12 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
     try {
       if (!iconFile) {
         setError('Icon is required');
+        setLoading(false);
+        return;
+      }
+
+      if (!formData.localizedDescription.trim()) {
+        setError('Description is required');
         setLoading(false);
         return;
       }
@@ -248,13 +286,14 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              Description *
             </label>
             <textarea
               value={formData.localizedDescription}
               onChange={(e) => setFormData({ ...formData, localizedDescription: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               rows={3}
+              required
             />
           </div>
 
@@ -262,12 +301,12 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Tint Color *
             </label>
-            <div className="flex gap-2">
-              <input
-                type="color"
-                value={formData.tintColor}
-                onChange={(e) => setFormData({ ...formData, tintColor: e.target.value })}
-                className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="w-12 h-10 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-purple-500"
+                style={{ backgroundColor: formData.tintColor }}
               />
               <input
                 type="text"
@@ -277,6 +316,14 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
               />
             </div>
+            {showColorPicker && (
+              <div className="mt-2 p-3 bg-white border border-gray-200 rounded-lg">
+                <SketchPicker
+                  color={formData.tintColor}
+                  onChange={(color) => setFormData({ ...formData, tintColor: color.hex })}
+                />
+              </div>
+            )}
           </div>
 
           <div>
@@ -313,6 +360,19 @@ function CreateAppModal({ onClose, onSuccess }: CreateAppModalProps) {
                 )}
               </label>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="visible"
+              checked={formData.visible}
+              onChange={(e) => setFormData({ ...formData, visible: e.target.checked })}
+              className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+            />
+            <label htmlFor="visible" className="text-sm font-medium text-gray-700">
+              Visible in source.json
+            </label>
           </div>
 
           {error && (

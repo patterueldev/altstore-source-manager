@@ -6,9 +6,10 @@ export interface IApp extends Document {
   developerName: string;
   iconURL: string;
   tintColor: string;
+  localizedDescription: string;
   subtitle?: string;
-  localizedDescription?: string;
   screenshots?: string[];
+  visible: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,8 +37,15 @@ const AppSchema = new Schema<IApp>({
     required: true,
   },
   subtitle: String,
-  localizedDescription: String,
+  localizedDescription: {
+    type: String,
+    required: true,
+  },
   screenshots: [String],
+  visible: {
+    type: Boolean,
+    default: true,
+  },
 }, {
   timestamps: true,
 });
