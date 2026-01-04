@@ -27,6 +27,21 @@ const minioClient = new MinioClient({
 const ICONS_BUCKET = 'icons';
 const SCREENSHOTS_BUCKET = 'screenshots';
 
+const normalizeToPath = (value?: string | null): string => {
+  if (!value) return '';
+  const stripPublic = (path: string) => path.startsWith('/public/') ? path.replace('/public/', '/') : path;
+
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    try {
+      const url = new URL(value);
+      return stripPublic(url.pathname || '');
+    } catch {
+      return stripPublic(value);
+    }
+  }
+  return stripPublic(value);
+};
+
 function withPublicUrls(app: any, req: express.Request) {
   const obj = app?.toObject ? app.toObject() : app;
   return {
@@ -80,9 +95,9 @@ router.post('/', authMiddleware, async (req, res) => {
       developerName,
       subtitle,
       localizedDescription,
-      iconURL,
+      iconURL: normalizeToPath(iconURL),
       tintColor,
-      screenshots: screenshots || [],
+      screenshots: (screenshots || []).map(normalizeToPath),
       visible: visible !== undefined ? visible : true,
     });
 
@@ -115,9 +130,12 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (developerName) app.developerName = developerName;
     if (subtitle !== undefined) app.subtitle = subtitle;
     if (localizedDescription !== undefined) app.localizedDescription = localizedDescription;
-    if (iconURL !== undefined) app.iconURL = iconURL;
+    if (iconURL !== undefined) app.iconURL = normalizeToPath(iconURL);
     if (tintColor !== undefined) app.tintColor = tintColor;
-    if (screenshots !== undefined) app.screenshots = screenshots;
+    if (screenshots !== undefined) {
+      const normalized = screenshots.map(normalizeToPath).filter(Boolean) as string[];
+      app.screenshots = normalized;
+    }
     if (visible !== undefined) app.visible = visible;
 
     await app.save();
@@ -243,7 +261,8 @@ router.put('/:id/screenshots/reorder', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Screenshots must be an array' });
     }
 
-    app.screenshots = screenshots;
+    const normalized = screenshots.map(normalizeToPath).filter(Boolean) as string[];
+    app.screenshots = normalized;
     await app.save();
 
     res.json({ screenshots: app.screenshots.map((url) => buildPublicUrl(url, req)) });

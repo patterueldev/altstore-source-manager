@@ -27,6 +27,22 @@ const minioClient = new MinioClient({
 const BUCKET_NAME = 'ipas';
 const ADMIN_SHARED_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
 
+function extractObjectKey(downloadURL?: string | null): string | null {
+  if (!downloadURL) return null;
+  try {
+    const url = downloadURL.startsWith('http://') || downloadURL.startsWith('https://')
+      ? new URL(downloadURL)
+      : new URL(downloadURL, 'http://localhost');
+    const segments = url.pathname.replace(/^\/+/, '').split('/');
+    // drop bucket name
+    return segments.length > 1 ? segments.slice(1).join('/') : segments[0] || null;
+  } catch {
+    const sanitized = downloadURL.split('?')[0]?.split('#')[0]?.replace(/^\/+/, '') || '';
+    const parts = sanitized.split('/');
+    return parts.length > 1 ? parts.slice(1).join('/') : parts[0] || null;
+  }
+}
+
 function validateCiSecret(req: express.Request, res: express.Response): boolean {
   if (!ADMIN_SHARED_SECRET) {
     res.status(500).json({ error: 'Admin secret not configured on server' });
@@ -192,6 +208,63 @@ router.post('/ci-upload', upload.single('ipa'), async (req, res) => {
   }
 });
 
+// Replace IPA for an existing version (authenticated)
+router.put('/:id/ipa', authMiddleware, upload.single('ipa'), async (req, res) => {
+  try {
+    const versionDoc = await Version.findById(req.params.id);
+    if (!versionDoc) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'IPA file is required' });
+    }
+
+    const app = await App.findById(versionDoc.appId);
+    if (!app) {
+      return res.status(404).json({ error: 'App not found for version' });
+    }
+
+    const file = req.file;
+    const fileBuffer = file.buffer;
+    const fileSize = file.size;
+
+    // Calculate SHA256
+    const hash = crypto.createHash('sha256');
+    hash.update(fileBuffer);
+    const sha256 = hash.digest('hex');
+
+    // Generate unique filename
+    const filename = `${app.bundleIdentifier}-${versionDoc.version}-${Date.now()}.ipa`;
+
+    // Upload to MinIO
+    await minioClient.putObject(BUCKET_NAME, filename, fileBuffer, fileSize, {
+      'Content-Type': 'application/octet-stream',
+    });
+
+    // Best-effort removal of the previous object
+    const previousKey = extractObjectKey(versionDoc.downloadURL);
+    if (previousKey) {
+      minioClient.removeObject(BUCKET_NAME, previousKey).catch((err) => {
+        console.warn('Failed to delete previous IPA from MinIO:', err);
+      });
+    }
+
+    // Store relative path (will be converted to full URL on read)
+    const downloadPath = buildStoragePath(BUCKET_NAME, filename);
+
+    versionDoc.downloadURL = downloadPath;
+    versionDoc.size = fileSize;
+    versionDoc.sha256 = sha256;
+    await versionDoc.save();
+
+    res.json(versionDoc);
+  } catch (error) {
+    console.error('Replace IPA error:', error);
+    res.status(500).json({ error: 'Failed to replace IPA' });
+  }
+});
+
 // Update version (authenticated)
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
@@ -229,8 +302,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Version not found' });
     }
 
-    // Extract filename from downloadURL path (e.g., "/ipas/file.ipa" -> "file.ipa")
-    const filename = versionDoc.downloadURL.split('/').pop();
+    // Extract object key from downloadURL path
+    const filename = extractObjectKey(versionDoc.downloadURL);
 
     // Delete from MinIO
     if (filename) {

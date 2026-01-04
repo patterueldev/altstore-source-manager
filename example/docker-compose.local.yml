@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  altstore-manager-server:
+    image: altstore-source-manager:local
+    container_name: altstore-manager-server
+    ports:
+      - "80:3000"
+    environment:
+      NODE_ENV: production
+      MONGO_URI: ${MONGO_URI:-mongodb://${MONGO_USER:-altstore}:${MONGO_PASSWORD:-changeme}@altstore-manager-mongodb:27017/altstore?authSource=admin}
+      MINIO_ENDPOINT: altstore-manager-minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-altstore}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-altstoresecret}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-}
+    depends_on:
+      altstore-manager-mongodb:
+        condition: service_healthy
+      altstore-manager-minio:
+        condition: service_healthy
+    networks:
+      - altstore-manager
+    restart: unless-stopped
+
+  altstore-manager-mongodb:
+    image: mongo:7.0
+    container_name: altstore-manager-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-altstore}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: altstore
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - altstore-manager
+    restart: unless-stopped
+
+  altstore-manager-minio:
+    image: minio/minio:latest
+    container_name: altstore-manager-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-${MINIO_ACCESS_KEY:-altstore}}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-${MINIO_SECRET_KEY:-altstoresecret}}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: curl -f http://localhost:9000/minio/health/live || exit 1
+    networks:
+      - altstore-manager
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  minio_data:
+    driver: local
+
+networks:
+  altstore-manager:
+    driver: bridge

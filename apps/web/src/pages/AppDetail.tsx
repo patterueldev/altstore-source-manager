@@ -40,6 +40,7 @@ export default function AppDetail() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showEditAppModal, setShowEditAppModal] = useState(false);
   const [editingVersion, setEditingVersion] = useState<Version | null>(null);
+  const [replacingVersion, setReplacingVersion] = useState<Version | null>(null);
   const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
 
   useEffect(() => {
@@ -192,6 +193,12 @@ export default function AppDetail() {
                 </div>
                 <div className="flex gap-2">
                   <button
+                    onClick={() => setReplacingVersion(version)}
+                    className="px-3 py-1 text-sm text-purple-700 hover:bg-purple-50 rounded"
+                  >
+                    Replace IPA
+                  </button>
+                  <button
                     onClick={() => setEditingVersion(version)}
                     className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded"
                   >
@@ -239,6 +246,17 @@ export default function AppDetail() {
           onClose={() => setEditingVersion(null)}
           onSuccess={() => {
             setEditingVersion(null);
+            fetchData();
+          }}
+        />
+      )}
+
+      {replacingVersion && (
+        <ReplaceIpaModal
+          version={replacingVersion}
+          onClose={() => setReplacingVersion(null)}
+          onSuccess={() => {
+            setReplacingVersion(null);
             fetchData();
           }}
         />
@@ -877,6 +895,35 @@ function UploadVersionModal({ appId, latestVersion, onClose, onSuccess }: Upload
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileInput = (selected: File | null) => {
+    if (!selected) {
+      setFile(null);
+      return;
+    }
+    setError('');
+    setFile(selected);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) {
+      handleFileInput(dropped);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -923,13 +970,34 @@ function UploadVersionModal({ appId, latestVersion, onClose, onSuccess }: Upload
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">IPA File *</label>
-            <input
-              type="file"
-              accept=".ipa"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="w-full text-sm"
-              required
-            />
+            <div
+              className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                isDragging ? 'border-purple-500 bg-purple-50' : 'border-gray-300'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <input
+                type="file"
+                accept=".ipa"
+                onChange={(e) => handleFileInput(e.target.files?.[0] || null)}
+                className="hidden"
+                id="upload-ipa-input"
+              />
+              <label htmlFor="upload-ipa-input" className="cursor-pointer block">
+                {file ? (
+                  <p className="text-sm text-green-700">✓ {file.name}</p>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-700">
+                      <span className="text-purple-700 font-semibold">Click to choose</span> or drag & drop your .ipa
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Max 500MB</p>
+                  </>
+                )}
+              </label>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -1041,6 +1109,139 @@ function UploadVersionModal({ appId, latestVersion, onClose, onSuccess }: Upload
               className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
             >
               {loading ? 'Uploading...' : 'Upload'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+interface ReplaceIpaModalProps {
+  version: Version;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function ReplaceIpaModal({ version, onClose, onSuccess }: ReplaceIpaModalProps) {
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileInput = (selected: File | null) => {
+    if (!selected) {
+      setFile(null);
+      return;
+    }
+    setError('');
+    setFile(selected);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) {
+      handleFileInput(dropped);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      setError('Please select an IPA file');
+      return;
+    }
+
+    const data = new FormData();
+    data.append('ipa', file);
+
+    setLoading(true);
+    try {
+      await api.put(`/versions/${version._id}/ipa`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      onSuccess();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to replace IPA');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+        <h3 className="text-xl font-semibold mb-2">Replace IPA</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          {version.version} (Build {version.buildVersion}) — current size {(version.size / 1024 / 1024).toFixed(2)} MB
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">New IPA File *</label>
+            <div
+              className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                isDragging ? 'border-purple-500 bg-purple-50' : 'border-gray-300'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <input
+                type="file"
+                accept=".ipa"
+                onChange={(e) => handleFileInput(e.target.files?.[0] || null)}
+                className="hidden"
+                id="replace-ipa-input"
+              />
+              <label htmlFor="replace-ipa-input" className="cursor-pointer block">
+                {file ? (
+                  <p className="text-sm text-green-700">✓ {file.name}</p>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-700">
+                      <span className="text-purple-700 font-semibold">Click to choose</span> or drag & drop a replacement .ipa
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Existing download URL will be updated</p>
+                  </>
+                )}
+              </label>
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            >
+              {loading ? 'Replacing...' : 'Replace IPA'}
             </button>
           </div>
         </form>
