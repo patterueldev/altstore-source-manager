@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   altstore-manager-server:
-    image: ghcr.io/patterueldev/altstore-manager:latest
+    image: ghcr.io/patterueldev/altstore-source-manager:latest
     container_name: altstore-manager-server
     ports:
       - "80:3000"
@@ -20,7 +20,7 @@ services:
       altstore-manager-minio:
         condition: service_healthy
     networks:
-      - altstore-example
+      - altstore-manager
     restart: unless-stopped
 
   altstore-manager-mongodb:
@@ -39,7 +39,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - altstore-example
+      - altstore-manager
     restart: unless-stopped
 
   altstore-manager-minio:
@@ -54,7 +54,7 @@ services:
     healthcheck:
       test: curl -f http://localhost:9000/minio/health/live || exit 1
     networks:
-      - altstore-example
+      - altstore-manager
     restart: unless-stopped
 
 volumes:
@@ -66,5 +66,5 @@ volumes:
     driver: local
 
 networks:
-  altstore-example:
+  altstore-manager:
     driver: bridge
