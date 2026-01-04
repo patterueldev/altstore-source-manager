@@ -5,6 +5,19 @@ on:
     types: [closed]
     branches:
       - main
+    paths:
+      - 'apps/**/*.ts'
+      - 'apps/**/*.tsx'
+      - 'apps/**/*.js'
+      - 'apps/**/*.jsx'
+      - 'apps/**/*.cjs'
+      - 'apps/**/*.mjs'
+      - 'apps/**/package.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'apps/**/tsconfig*.json'
+      - 'tsconfig*.json'
+      - '**/Dockerfile'
 
 env:
   REGISTRY: ghcr.io

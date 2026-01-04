@@ -8,8 +8,8 @@ services:
       - "80:3000"
     environment:
       NODE_ENV: production
-      MONGO_URI: ${MONGO_URI:-mongodb://${MONGO_USER:-altstore}:${MONGO_PASSWORD:-changeme}@mongodb:27017/altstore?authSource=admin}
-      MINIO_ENDPOINT: minio
+      MONGO_URI: ${MONGO_URI:-mongodb://${MONGO_USER:-altstore}:${MONGO_PASSWORD:-changeme}@altstore-manager-mongodb:27017/altstore?authSource=admin}
+      MINIO_ENDPOINT: altstore-manager-minio
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-altstore}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-altstoresecret}
