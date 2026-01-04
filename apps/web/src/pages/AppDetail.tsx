@@ -213,6 +213,7 @@ export default function AppDetail() {
       {showUploadModal && (
         <UploadVersionModal
           appId={id!}
+          latestVersion={versions.length > 0 ? versions[0] : undefined}
           onClose={() => setShowUploadModal(false)}
           onSuccess={() => {
             setShowUploadModal(false);
@@ -858,19 +859,20 @@ function EditVersionModal({ version, onClose, onSuccess }: EditVersionModalProps
 
 interface UploadVersionModalProps {
   appId: string;
+  latestVersion?: Version;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-function UploadVersionModal({ appId, onClose, onSuccess }: UploadVersionModalProps) {
+function UploadVersionModal({ appId, latestVersion, onClose, onSuccess }: UploadVersionModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     version: '',
     buildVersion: '',
     date: new Date().toISOString().split('T')[0],
     localizedDescription: '',
-    minOSVersion: '15.0',
-    maxOSVersion: '',
+    minOSVersion: latestVersion?.minOSVersion || '15.0',
+    maxOSVersion: latestVersion?.maxOSVersion || '',
     visible: true,
   });
   const [error, setError] = useState('');
