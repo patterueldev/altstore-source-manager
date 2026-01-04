@@ -230,6 +230,28 @@ Interactive API documentation is available at `/api-docs` when the server is run
 
 ## Troubleshooting
 
+### Reset Admin Password
+
+If you've forgotten your admin password or need to reset it:
+
+```bash
+# Using Docker Compose
+docker compose exec altstore-manager-server pnpm reset-admin
+
+# Or directly with docker exec
+docker exec altstore-manager-server pnpm reset-admin
+```
+
+The command will generate a new password and display it in the output:
+
+```
+========================================
+ADMIN PASSWORD RESET
+========================================
+New Password: <generated-password>
+========================================
+```
+
 ### Icons/Assets Not Loading
 
 If assets aren't loading, check:
