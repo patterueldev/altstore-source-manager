@@ -124,6 +124,21 @@ function filterNull(obj: any): any {
   return obj;
 }
 
+const normalizeToPath = (value?: string | null) => {
+  if (!value) return value || undefined;
+  const stripPublic = (path: string) => path.startsWith('/public/') ? path.replace('/public/', '/') : path;
+
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    try {
+      const url = new URL(value);
+      return stripPublic(url.pathname || undefined as any);
+    } catch {
+      return stripPublic(value);
+    }
+  }
+  return stripPublic(value);
+};
+
 // Source endpoint (root path)
 app.get('/', async (req, res) => {
   try {
@@ -235,8 +250,8 @@ async function initializeSourceConfig() {
       name: process.env.SOURCE_NAME || 'AltStore Source',
       subtitle: process.env.SOURCE_SUBTITLE,
       description: process.env.SOURCE_DESCRIPTION,
-      iconURL: process.env.SOURCE_ICON_URL,
-      headerURL: process.env.SOURCE_HEADER_URL,
+      iconURL: normalizeToPath(process.env.SOURCE_ICON_URL),
+      headerURL: normalizeToPath(process.env.SOURCE_HEADER_URL),
       website: process.env.SOURCE_WEBSITE,
       tintColor: process.env.SOURCE_TINT_COLOR,
       featuredApps: process.env.SOURCE_FEATURED_APPS?.split(',').filter(Boolean) || [],

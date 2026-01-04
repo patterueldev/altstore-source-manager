@@ -3,7 +3,7 @@ import multer from 'multer';
 import { SourceConfig } from '../models/SourceConfig.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
-import { buildObjectUrl, buildPublicUrl } from '../utils/publicUrl.js';
+import { buildPublicUrl, buildStoragePath } from '../utils/publicUrl.js';
 
 const router: Router = express.Router();
 
@@ -29,6 +29,21 @@ const minioClient = new MinioClient({
 });
 
 const SOURCE_IMAGES_BUCKET = 'source-images';
+
+const normalizeToPath = (value?: string | null) => {
+  if (!value) return value || undefined;
+  const stripPublic = (path: string) => path.startsWith('/public/') ? path.replace('/public/', '/') : path;
+
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    try {
+      const url = new URL(value);
+      return stripPublic(url.pathname || undefined as any);
+    } catch {
+      return stripPublic(value);
+    }
+  }
+  return stripPublic(value);
+};
 
 function withPublicUrls(config: any, req: express.Request) {
   const obj = config?.toObject ? config.toObject() : config;
@@ -71,8 +86,6 @@ router.put('/', authMiddleware, async (req, res) => {
     
     // Validate URLs if provided
     const urlFields = [
-      { field: 'iconURL', value: iconURL },
-      { field: 'headerURL', value: headerURL },
       { field: 'website', value: website },
     ];
     
@@ -97,8 +110,8 @@ router.put('/', authMiddleware, async (req, res) => {
     // Update optional fields
     config.subtitle = subtitle || undefined;
     config.description = description || undefined;
-    config.iconURL = iconURL || undefined;
-    config.headerURL = headerURL || undefined;
+    config.iconURL = normalizeToPath(iconURL) || undefined;
+    config.headerURL = normalizeToPath(headerURL) || undefined;
     config.website = website || undefined;
     config.tintColor = tintColor || undefined;
     config.featuredApps = featuredApps || [];
@@ -131,14 +144,13 @@ router.post('/icon', authMiddleware, upload.single('icon'), async (req, res) => 
       'Content-Type': file.mimetype,
     });
 
-    // Generate download URL
-    const iconURL = buildObjectUrl(SOURCE_IMAGES_BUCKET, filename, req, true);
+    const iconPath = buildStoragePath(SOURCE_IMAGES_BUCKET, filename);
 
-    // Update config
-    config.iconURL = iconURL;
+    // Update config with relative path
+    config.iconURL = iconPath;
     await config.save();
 
-    res.json({ iconURL });
+    res.json({ iconURL: buildPublicUrl(iconPath, req) });
   } catch (error) {
     console.error('Upload source icon error:', error);
     res.status(500).json({ error: 'Failed to upload icon' });
@@ -165,14 +177,13 @@ router.post('/header', authMiddleware, upload.single('header'), async (req, res)
       'Content-Type': file.mimetype,
     });
 
-    // Generate download URL
-    const headerURL = buildObjectUrl(SOURCE_IMAGES_BUCKET, filename, req, true);
+    const headerPath = buildStoragePath(SOURCE_IMAGES_BUCKET, filename);
 
-    // Update config
-    config.headerURL = headerURL;
+    // Update config with relative path
+    config.headerURL = headerPath;
     await config.save();
 
-    res.json({ headerURL });
+    res.json({ headerURL: buildPublicUrl(headerPath, req) });
   } catch (error) {
     console.error('Upload source header error:', error);
     res.status(500).json({ error: 'Failed to upload header' });

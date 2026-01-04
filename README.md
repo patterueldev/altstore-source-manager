@@ -198,6 +198,12 @@ altstore-source-manager/
     └── workflows/       # CI/CD (auto-builds on push)
 ```
 
+## Notable behaviors
+
+- IPA replacement endpoint: `PUT /api/versions/:id/ipa` accepts `multipart/form-data` with field `ipa` to swap an existing build while keeping metadata. Requires the same auth as other version routes.
+- Drag-and-drop IPA upload is available in the dashboard upload and replace flows for convenience.
+- Media URL handling: source icon/header and app screenshots are stored as relative paths; responses prefix them with `MINIO_PUBLIC_URL` when set, or the current host + `/public` otherwise.
+
 ## Tech Stack
 
 **Backend:**
