@@ -5,7 +5,7 @@ import { App } from '../models/App.js';
 import { Version } from '../models/Version.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
-import { buildStoragePath } from '../utils/publicUrl.js';
+import { buildPublicUrl, buildStoragePath } from '../utils/publicUrl.js';
 
 const router: Router = express.Router();
 
@@ -27,11 +27,21 @@ const minioClient = new MinioClient({
 const ICONS_BUCKET = 'icons';
 const SCREENSHOTS_BUCKET = 'screenshots';
 
+function withPublicUrls(app: any, req: express.Request) {
+  const obj = app?.toObject ? app.toObject() : app;
+  return {
+    ...obj,
+    iconURL: obj?.iconURL ? buildPublicUrl(obj.iconURL, req) : obj?.iconURL,
+    screenshots: obj?.screenshots?.map((url: string) => buildPublicUrl(url, req)) || [],
+  };
+}
+
 // Get all apps (protected)
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const apps = await App.find().sort({ createdAt: -1 });
-    res.json(apps);
+    const appsWithUrls = apps.map((app) => withPublicUrls(app, req));
+    res.json(appsWithUrls);
   } catch (error) {
     console.error('Get apps error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -45,7 +55,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
     if (!app) {
       return res.status(404).json({ error: 'App not found' });
     }
-    res.json(app);
+    res.json(withPublicUrls(app, req));
   } catch (error) {
     console.error('Get app error:', error);
     res.status(500).json({ error: 'Server error' });
@@ -77,7 +87,7 @@ router.post('/', authMiddleware, async (req, res) => {
     });
 
     await app.save();
-    res.status(201).json(app);
+    res.status(201).json(withPublicUrls(app, req));
   } catch (error: any) {
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Bundle identifier already exists' });
@@ -111,7 +121,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (visible !== undefined) app.visible = visible;
 
     await app.save();
-    res.json(app);
+    res.json(withPublicUrls(app, req));
   } catch (error: any) {
     if (error.code === 11000) {
       return res.status(400).json({ error: 'Bundle identifier already exists' });
@@ -147,7 +157,7 @@ router.post('/:id/icon', authMiddleware, upload.single('icon'), async (req, res)
     app.iconURL = iconPath;
     await app.save();
 
-    res.json({ iconURL: iconPath });
+    res.json({ iconURL: buildPublicUrl(iconPath, req) });
   } catch (error) {
     console.error('Upload icon error:', error);
     res.status(500).json({ error: 'Failed to upload icon' });
@@ -189,7 +199,7 @@ router.post('/:id/screenshots', authMiddleware, upload.array('screenshots', 10),
     app.screenshots.push(...screenshotURLs);
     await app.save();
 
-    res.json({ screenshots: app.screenshots });
+    res.json({ screenshots: app.screenshots.map((url) => buildPublicUrl(url, req)) });
   } catch (error) {
     console.error('Upload screenshots error:', error);
     res.status(500).json({ error: 'Failed to upload screenshots' });
@@ -213,7 +223,7 @@ router.delete('/:id/screenshots/:index', authMiddleware, async (req, res) => {
     app.screenshots = app.screenshots?.filter((_, i) => i !== index) || [];
     await app.save();
 
-    res.json({ screenshots: app.screenshots });
+    res.json({ screenshots: app.screenshots.map((url) => buildPublicUrl(url, req)) });
   } catch (error) {
     console.error('Delete screenshot error:', error);
     res.status(500).json({ error: 'Failed to delete screenshot' });
@@ -236,7 +246,7 @@ router.put('/:id/screenshots/reorder', authMiddleware, async (req, res) => {
     app.screenshots = screenshots;
     await app.save();
 
-    res.json({ screenshots: app.screenshots });
+    res.json({ screenshots: app.screenshots.map((url) => buildPublicUrl(url, req)) });
   } catch (error) {
     console.error('Reorder screenshots error:', error);
     res.status(500).json({ error: 'Failed to reorder screenshots' });

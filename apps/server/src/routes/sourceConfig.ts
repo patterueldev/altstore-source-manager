@@ -3,7 +3,7 @@ import multer from 'multer';
 import { SourceConfig } from '../models/SourceConfig.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
-import { buildObjectUrl } from '../utils/publicUrl.js';
+import { buildObjectUrl, buildPublicUrl } from '../utils/publicUrl.js';
 
 const router: Router = express.Router();
 
@@ -30,6 +30,15 @@ const minioClient = new MinioClient({
 
 const SOURCE_IMAGES_BUCKET = 'source-images';
 
+function withPublicUrls(config: any, req: express.Request) {
+  const obj = config?.toObject ? config.toObject() : config;
+  return {
+    ...obj,
+    iconURL: obj?.iconURL ? buildPublicUrl(obj.iconURL, req) : obj?.iconURL,
+    headerURL: obj?.headerURL ? buildPublicUrl(obj.headerURL, req) : obj?.headerURL,
+  };
+}
+
 // Get source config
 router.get('/', authMiddleware, async (req, res) => {
   try {
@@ -44,7 +53,7 @@ router.get('/', authMiddleware, async (req, res) => {
       await config.save();
     }
     
-    res.json(config);
+    res.json(withPublicUrls(config, req));
   } catch (error) {
     console.error('Get source config error:', error);
     res.status(500).json({ error: 'Failed to get source config' });
@@ -95,7 +104,7 @@ router.put('/', authMiddleware, async (req, res) => {
     config.featuredApps = featuredApps || [];
     
     await config.save();
-    res.json(config);
+    res.json(withPublicUrls(config, req));
   } catch (error) {
     console.error('Update source config error:', error);
     res.status(500).json({ error: 'Failed to update source config' });
