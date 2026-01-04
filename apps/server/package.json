@@ -7,9 +7,9 @@
   "scripts": {
     "dev": "pnpm build && node dist/index.js",
     "build": "tsc",
-    "test": "vitest",
+    "test": "vitest run --passWithNoTests",
     "lint": "eslint src --ext .ts",
-      "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit",
     "start": "node dist/index.js"
   },
   "dependencies": {
