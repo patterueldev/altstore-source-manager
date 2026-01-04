@@ -17,7 +17,15 @@ git clone https://github.com/patterueldev/altstore-source-manager.git
 cd altstore-source-manager
 ```
 
-### 2. Set Up Environment Variables
+### 2. Install Dependencies
+
+Requires Node.js 20+ and PNPM 10:
+
+```bash
+pnpm install
+```
+
+### 3. Set Up Environment Variables
 
 ```bash
 cp .env.example .env
@@ -25,7 +33,7 @@ cp .env.example .env
 
 Review and adjust `.env` if needed for your local setup.
 
-### 3. Start Services
+### 4. Start Infrastructure Services
 
 ```bash
 docker-compose up -d
@@ -36,17 +44,15 @@ This will start:
 - **MinIO** API on `localhost:9000` (devadmin:devsecret)
 - **MinIO Console** on `localhost:9001`
 
-### 4. Verify Services
-
-Check service health:
+### 5. Start Development Servers
 
 ```bash
-# MongoDB
-mongosh "mongodb://admin:password@localhost:27017/altstore?authSource=admin"
-
-# MinIO via mc (MinIO client)
-docker exec altstore-minio-init mc admin info minio
+pnpm dev
 ```
+
+This starts both the Express backend and React frontend in watch mode:
+- Backend: `http://localhost:3000`
+- Frontend: `http://localhost:5173`
 
 Or use the MinIO console: http://localhost:9001
 

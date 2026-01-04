@@ -37,22 +37,35 @@ This project follows a consistent monorepo structure:
 
 ```
 altstore-source-manager/
-├── apps/                      # Main/front-facing applications
-│   └── server/               # Backend API server (Spring Boot)
-├── packages/                  # Shared code and reusable modules (future)
-│   ├── core/                 # Platform-agnostic core logic
-│   └── features/             # Feature modules (future)
+├── apps/
+│   ├── server/                # Express.js backend API
+│   │   ├── src/
+│   │   │   ├── routes/        # API endpoints
+│   │   │   ├── services/      # Business logic
+│   │   │   ├── models/        # Mongoose schemas
+│   │   │   ├── middleware/    # Auth, validation, error handling
+│   │   │   └── index.ts       # App entry point
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── web/                   # React frontend dashboard
+│       ├── src/
+│       │   ├── components/    # React components
+│       │   ├── pages/         # Page components
+│       │   ├── hooks/         # Custom React hooks
+│       │   ├── services/      # API client calls
+│       │   └── App.tsx        # Main app component
+│       ├── package.json
+│       └── tsconfig.json
+├── packages/                  # Shared code (future)
+│   └── types/                 # Shared TypeScript types
 ├── docs/                      # Project documentation
-│   ├── ARCHITECTURE.md        # This file
-│   ├── INFRASTRUCTURE.md      # Deployment and CI/CD
-│   ├── MVP.md                 # MVP scope and user stories
-│   ├── REQUIREMENTS.md        # Original requirements
-│   └── TECH_STACK.md          # Technology choices
 ├── scripts/                   # Build/deploy/utility scripts
 ├── .github/                   # GitHub configurations
-│   └── copilot-instructions.md
 ├── devbox.json                # Development environment
-├── docker-compose.yml         # Local services (DB, etc.)
+├── docker-compose.yml         # Local services (MongoDB, MinIO)
+├── pnpm-workspace.yaml        # PNPM workspace config
+├── pnpm-lock.yaml             # Locked dependencies
+├── package.json               # Root workspace + catalog
 ├── openapi.yaml               # API specification
 └── .gitignore                 # Git ignore patterns
 ```
