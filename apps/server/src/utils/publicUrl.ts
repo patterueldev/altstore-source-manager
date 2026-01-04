@@ -1,7 +1,7 @@
 import { Request } from 'express';
 
 // Derives the public base URL for MinIO-served assets.
-// Priority: MINIO_PUBLIC_URL env > request host/protocol > localhost fallback.
+// Priority: MINIO_PUBLIC_URL env (fully-qualified) > current host + /public.
 export function getPublicBase(req?: Request): string {
   const envBase = process.env.MINIO_PUBLIC_URL?.trim();
   if (envBase) {
@@ -12,7 +12,7 @@ export function getPublicBase(req?: Request): string {
     const host = req.get('host');
     const protocol = req.protocol;
     if (host) {
-      return `${protocol}://${host}`;
+      return `${protocol}://${host}/public`.replace(/\/$/, '');
     }
   }
 

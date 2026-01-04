@@ -8,12 +8,12 @@ services:
       - "80:3000"
     environment:
       NODE_ENV: production
-      MONGO_URI: ${MONGO_URI}
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio}
-      MINIO_PORT: ${MINIO_PORT:-9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
+      MONGO_URI: ${MONGO_URI:-mongodb://${MONGO_USER:-altstore}:${MONGO_PASSWORD:-changeme}@mongodb:27017/altstore?authSource=admin}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-altstore}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-altstoresecret}
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -27,8 +27,8 @@ services:
     image: mongo:7.0
     container_name: altstore-example-mongodb
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-altstore}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
       MONGO_INITDB_DATABASE: altstore
     volumes:
       - mongodb_data:/data/db
@@ -46,8 +46,8 @@ services:
     image: minio/minio:latest
     container_name: altstore-example-minio
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-${MINIO_ACCESS_KEY:-altstore}}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-${MINIO_SECRET_KEY:-altstoresecret}}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -65,7 +65,7 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
-      /usr/bin/mc config host add minio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc config host add minio http://minio:9000 ${MINIO_ACCESS_KEY:-altstore} ${MINIO_SECRET_KEY:-altstoresecret};
       /usr/bin/mc mb minio/ipas --ignore-existing;
       /usr/bin/mc mb minio/icons --ignore-existing;
       /usr/bin/mc mb minio/screenshots --ignore-existing;
