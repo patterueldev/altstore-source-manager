@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  server:
+  altstore-manager-server:
     image: ghcr.io/patterueldev/altstore-manager:latest
-    container_name: altstore-example-server
+    container_name: altstore-manager-server
     ports:
       - "80:3000"
     environment:
@@ -15,17 +15,17 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-altstoresecret}
       MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-}
     depends_on:
-      mongodb:
+      altstore-manager-mongodb:
         condition: service_healthy
-      minio:
+      altstore-manager-minio:
         condition: service_healthy
     networks:
       - altstore-example
     restart: unless-stopped
 
-  mongodb:
+  altstore-manager-mongodb:
     image: mongo:7.0
-    container_name: altstore-example-mongodb
+    container_name: altstore-manager-mongodb
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-altstore}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
@@ -42,9 +42,9 @@ services:
       - altstore-example
     restart: unless-stopped
 
-  minio:
+  altstore-manager-minio:
     image: minio/minio:latest
-    container_name: altstore-example-minio
+    container_name: altstore-manager-minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-${MINIO_ACCESS_KEY:-altstore}}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-${MINIO_SECRET_KEY:-altstoresecret}}
