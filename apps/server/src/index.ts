@@ -277,6 +277,12 @@ async function initializeMinIO() {
       
       await minioClient.setBucketPolicy(bucket, JSON.stringify(policy));
       console.log(`✓ Set public read policy for bucket: ${bucket}`);
+      
+      // Enable versioning for ipas bucket
+      if (bucket === 'ipas') {
+        await minioClient.setBucketVersioning(bucket, { Status: 'Enabled' });
+        console.log(`✓ Enabled versioning for bucket: ${bucket}`);
+      }
     } catch (error) {
       console.error(`Failed to initialize bucket ${bucket}:`, error);
     }
