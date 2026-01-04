@@ -1,6 +1,6 @@
 {
   "name": "@altstore/workspace",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "AltStore Source Manager - Full-stack JavaScript application",
   "type": "module",
   "packageManager": "pnpm@10.0.0",
@@ -10,7 +10,8 @@
     "test": "pnpm -r run test",
     "lint": "pnpm -r run lint",
     "type-check": "pnpm -r run type-check",
-    "reset-admin": "cd /app/apps/server && node scripts/reset-admin.js"
+    "reset-admin": "cd /app/apps/server && node scripts/reset-admin.js",
+    "check-versions": "node scripts/check-versions.js"
   },
   "pnpm": {
     "catalogs": {

@@ -6,34 +6,72 @@ on:
     branches:
       - main
     paths:
-      - 'apps/**/*.ts'
-      - 'apps/**/*.tsx'
-      - 'apps/**/*.js'
-      - 'apps/**/*.jsx'
-      - 'apps/**/*.cjs'
-      - 'apps/**/*.mjs'
-      - 'apps/**/package.json'
       - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'apps/**/tsconfig*.json'
-      - 'tsconfig*.json'
-      - '**/Dockerfile'
+      - 'apps/server/package.json'
+      - 'apps/web/package.json'
+      - 'scripts/check-versions.js'
+      - '.github/workflows/docker-publish.yml'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push:
-    if: github.event.pull_request.merged == true
+  detect-version-change:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      
+    outputs:
+      version: ${{ steps.read.outputs.version }}
+      changed: ${{ steps.compare.outputs.changed }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Read current version
+        id: read
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Detect version change
+        id: compare
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.ref }}"
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            git fetch origin "$BASE_SHA" --depth=1 || git fetch origin "$BASE_REF" --depth=1
+            PREV=$(git show "$BASE_SHA:package.json" | node -e "const fs=require('fs'); const data=fs.readFileSync(0,'utf8'); console.log(JSON.parse(data).version);")
+          else
+            PREV=$(git show HEAD^:package.json 2>/dev/null | node -e "const fs=require('fs'); const data=fs.readFileSync(0,'utf8'); if(!data){process.exit(0);} console.log(JSON.parse(data).version);")
+          fi
+
+          if [ "$CURRENT" != "$PREV" ]; then
+            echo "Version changed: $PREV -> $CURRENT"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version unchanged ($CURRENT). Skipping release."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-and-push:
+    needs: detect-version-change
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && needs.detect-version-change.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify package versions aligned
+        run: node scripts/check-versions.js
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -45,6 +83,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set version env
+        run: echo "VERSION=${{ needs.detect-version-change.outputs.version }}" >> "$GITHUB_ENV"
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag -f "v${VERSION}"
+          git push origin "v${VERSION}"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -52,6 +100,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
+            type=raw,value=${{ env.VERSION }}
             type=sha,prefix={{branch}}-
 
       - name: Build and push Docker image

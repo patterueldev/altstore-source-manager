@@ -204,6 +204,12 @@ altstore-source-manager/
 - Drag-and-drop IPA upload is available in the dashboard upload and replace flows for convenience.
 - Media URL handling: source icon/header and app screenshots are stored as relative paths; responses prefix them with `MINIO_PUBLIC_URL` when set, or the current host + `/public` otherwise.
 
+## Versioning & Releases
+
+- Unified semver across the workspace (server + web) comes from the root `package.json`; current version: `0.1.0`.
+- Releases (Docker build + GHCR push + git tag `v<version>`) trigger on PRs closed/merged to `main` **only when the version changes**.
+- To cut a release: bump the root `package.json` version (keep package.json files aligned with `pnpm check-versions`), merge the PR to `main`, and the workflow will tag and publish.
+
 ## Tech Stack
 
 **Backend:**
