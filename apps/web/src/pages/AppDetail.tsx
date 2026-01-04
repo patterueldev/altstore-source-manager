@@ -40,6 +40,7 @@ export default function AppDetail() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showEditAppModal, setShowEditAppModal] = useState(false);
   const [editingVersion, setEditingVersion] = useState<Version | null>(null);
+  const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -135,7 +136,13 @@ export default function AppDetail() {
               <span className="text-gray-500 block mb-2">Screenshots:</span>
               <div className="flex gap-2 overflow-x-auto">
                 {app.screenshots.map((url, index) => (
-                  <img key={index} src={url} alt={`Screenshot ${index + 1}`} className="h-40 rounded" />
+                  <img
+                    key={index}
+                    src={url}
+                    alt={`Screenshot ${index + 1}`}
+                    className="h-40 rounded cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setPreviewScreenshot(url)}
+                  />
                 ))}
               </div>
             </div>
@@ -235,6 +242,26 @@ export default function AppDetail() {
           }}
         />
       )}
+
+      {previewScreenshot && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50"
+          onClick={() => setPreviewScreenshot(null)}
+        >
+          <button
+            onClick={() => setPreviewScreenshot(null)}
+            className="absolute top-4 right-4 text-white text-4xl font-light hover:text-gray-300 w-12 h-12 flex items-center justify-center"
+          >
+            ×
+          </button>
+          <img
+            src={previewScreenshot}
+            alt="Screenshot preview"
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -275,6 +302,7 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
 
   const handleAddScreenshots = (files: FileList | null) => {
     if (!files) {
@@ -551,7 +579,8 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
                               <img
                                 src={url}
                                 alt={`Screenshot ${index + 1}`}
-                                className="h-32 w-auto rounded border-2 border-gray-300"
+                                className="h-32 w-auto rounded border-2 border-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => setPreviewScreenshot(url)}
                               />
                               <button
                                 type="button"
@@ -663,6 +692,26 @@ function EditAppModal({ app, onClose, onSuccess }: EditAppModalProps) {
           </div>
         </form>
       </div>
+
+      {previewScreenshot && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center p-4 z-50"
+          onClick={() => setPreviewScreenshot(null)}
+        >
+          <button
+            onClick={() => setPreviewScreenshot(null)}
+            className="absolute top-4 right-4 text-white text-4xl font-light hover:text-gray-300 w-12 h-12 flex items-center justify-center"
+          >
+            ×
+          </button>
+          <img
+            src={previewScreenshot}
+            alt="Screenshot preview"
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
