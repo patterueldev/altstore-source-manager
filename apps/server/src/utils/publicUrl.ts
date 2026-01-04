@@ -20,7 +20,13 @@ export function getPublicBase(req?: Request): string {
 }
 
 // Converts a stored relative path (e.g., "/icons/file.png") to a full public URL
+// Also handles legacy full URLs (returns as-is if already a full URL)
 export function buildPublicUrl(path: string, req?: Request): string {
+  // If path is already a full URL, return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  
   const base = getPublicBase(req);
   // Ensure path starts with /
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
