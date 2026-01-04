@@ -24,6 +24,20 @@ export function getPublicBase(req?: Request): string {
 export function buildPublicUrl(path: string, req?: Request): string {
   // If path is already a full URL, return as-is
   if (path.startsWith('http://') || path.startsWith('https://')) {
+    // If we have a request/env base, rewrite to that host to avoid stale origins
+    // (e.g., files uploaded on LAN host but consumed via public host).
+    try {
+      const currentBase = req ? getPublicBase(req) : undefined;
+      if (currentBase) {
+        const target = new URL(path);
+        const base = new URL(currentBase);
+        if (target.host !== base.host || target.protocol !== base.protocol) {
+          return `${base.origin}${target.pathname}${target.search}${target.hash}`;
+        }
+      }
+    } catch (err) {
+      // Fallback to original path if URL parsing fails
+    }
     return path;
   }
   
