@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  # Backend Server (from GHCR)
+  # Unified Server (Backend API + Frontend Dashboard from GHCR)
   server:
-    image: ghcr.io/patterueldev/altstore-server:latest
+    image: ghcr.io/patterueldev/altstore-manager:latest
     container_name: altstore-server
     ports:
-      - "3000:3000"
+      - "80:3000"
     environment:
       NODE_ENV: production
       MONGO_URI: ${MONGO_URI:-mongodb://admin:password@mongodb:27017/altstore?authSource=admin}
@@ -20,21 +20,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    networks:
-      - altstore-network
-    restart: unless-stopped
-
-  # Frontend Web (from GHCR)
-  web:
-    image: ghcr.io/patterueldev/altstore-web:latest
-    container_name: altstore-web
-    ports:
-      - "5173:5173"
-    environment:
-      NODE_ENV: production
-      VITE_API_URL: ${VITE_API_URL}
-    depends_on:
-      - server
     networks:
       - altstore-network
     restart: unless-stopped
@@ -65,9 +50,6 @@ services:
   minio:
     image: minio/minio:latest
     container_name: altstore-minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-devadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-devsecret}
