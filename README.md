@@ -53,7 +53,6 @@ MINIO_SECRET_KEY=your-minio-secret
 
 ```bash
 # Pull and start all services
-docker compose pull
 docker compose up -d
 
 # View logs to get admin credentials
