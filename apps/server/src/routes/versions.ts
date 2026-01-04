@@ -5,7 +5,7 @@ import { Version } from '../models/Version.js';
 import { App } from '../models/App.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
-import { buildObjectUrl } from '../utils/publicUrl.js';
+import { buildStoragePath } from '../utils/publicUrl.js';
 
 const router: Router = express.Router();
 
@@ -102,8 +102,8 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
       'Content-Type': 'application/octet-stream',
     });
 
-    // Generate download URL
-    const downloadURL = buildObjectUrl(BUCKET_NAME, filename, req);
+    // Store relative path (will be converted to full URL on read)
+    const downloadPath = buildStoragePath(BUCKET_NAME, filename);
 
     // Create version record
     const versionDoc = new Version({
@@ -112,7 +112,7 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
       buildVersion,
       date: new Date(date),
       localizedDescription,
-      downloadURL,
+      downloadURL: downloadPath,
       size: fileSize,
       minOSVersion,
       maxOSVersion,
@@ -165,7 +165,7 @@ router.post('/ci-upload', upload.single('ipa'), async (req, res) => {
       'Content-Type': 'application/octet-stream',
     });
 
-    const downloadURL = buildObjectUrl(BUCKET_NAME, filename, req);
+    const downloadPath = buildStoragePath(BUCKET_NAME, filename);
 
     const versionDoc = new Version({
       appId,
@@ -173,7 +173,7 @@ router.post('/ci-upload', upload.single('ipa'), async (req, res) => {
       buildVersion,
       date: new Date(date),
       localizedDescription,
-      downloadURL,
+      downloadURL: downloadPath,
       size: fileSize,
       minOSVersion,
       maxOSVersion,
@@ -229,9 +229,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Version not found' });
     }
 
-    // Extract filename from downloadURL
-    const url = new URL(versionDoc.downloadURL);
-    const filename = url.pathname.split('/').pop();
+    // Extract filename from downloadURL path (e.g., "/ipas/file.ipa" -> "file.ipa")
+    const filename = versionDoc.downloadURL.split('/').pop();
 
     // Delete from MinIO
     if (filename) {
@@ -275,8 +274,8 @@ router.post('/:id/screenshots', authMiddleware, upload.array('screenshots', 10),
         'Content-Type': 'image/png',
       });
 
-      const screenshotURL = buildObjectUrl(SCREENSHOTS_BUCKET, filename, req);
-      screenshotURLs.push(screenshotURL);
+      const screenshotPath = buildStoragePath(SCREENSHOTS_BUCKET, filename);
+      screenshotURLs.push(screenshotPath);
     }
 
     // Append to existing screenshots or replace

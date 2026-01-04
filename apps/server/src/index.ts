@@ -16,7 +16,7 @@ import authRoutes from './routes/auth.js';
 import appRoutes from './routes/apps.js';
 import versionRoutes from './routes/versions.js';
 import sourceConfigRoutes from './routes/sourceConfig.js';
-import { buildObjectUrl, getPublicBase } from './utils/publicUrl.js';
+import { buildObjectUrl, getPublicBase, buildPublicUrl } from './utils/publicUrl.js';
 
 dotenv.config();
 
@@ -139,6 +139,10 @@ app.get('/', async (req, res) => {
     const sourceApps = await Promise.all(apps.map(async (app) => {
       const versions = await Version.find({ appId: app._id, visible: true }).sort({ createdAt: -1 });
       
+      // Transform stored paths to full URLs
+      const iconURL = app.iconURL ? buildPublicUrl(app.iconURL, req) : app.iconURL;
+      const screenshots = app.screenshots?.map(path => buildPublicUrl(path, req));
+      
       // Only include classic format fields
       return {
         name: app.name,
@@ -146,15 +150,15 @@ app.get('/', async (req, res) => {
         developerName: app.developerName,
         subtitle: app.subtitle,
         localizedDescription: app.localizedDescription,
-        iconURL: app.iconURL,
+        iconURL,
         tintColor: app.tintColor,
-        screenshots: app.screenshots,
+        screenshots,
         versions: versions.map(v => ({
           version: v.version,
           buildVersion: v.buildVersion,
           date: v.date.toISOString().split('T')[0],
           localizedDescription: v.localizedDescription,
-          downloadURL: v.downloadURL,
+          downloadURL: buildPublicUrl(v.downloadURL, req),
           size: v.size,
           minOSVersion: v.minOSVersion,
           maxOSVersion: v.maxOSVersion,
@@ -173,8 +177,8 @@ app.get('/', async (req, res) => {
       name: config.name,
       subtitle: config.subtitle,
       description: config.description,
-      iconURL: config.iconURL,
-      headerURL: config.headerURL,
+      iconURL: config.iconURL ? buildPublicUrl(config.iconURL, req) : config.iconURL,
+      headerURL: config.headerURL ? buildPublicUrl(config.headerURL, req) : config.headerURL,
       website: config.website,
       tintColor: config.tintColor,
       featuredApps: validFeaturedApps,

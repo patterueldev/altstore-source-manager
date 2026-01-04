@@ -19,6 +19,20 @@ export function getPublicBase(req?: Request): string {
   throw new Error('MINIO_PUBLIC_URL is not configured and could not be derived from the request');
 }
 
+// Converts a stored relative path (e.g., "/icons/file.png") to a full public URL
+export function buildPublicUrl(path: string, req?: Request): string {
+  const base = getPublicBase(req);
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${normalizedPath}`;
+}
+
+// Helper to build relative path for storage (bucket/key -> /bucket/key)
+export function buildStoragePath(bucket: string, key: string): string {
+  return `/${bucket}/${key}`;
+}
+
+// Legacy: builds full URL from bucket/key (deprecated - use buildStoragePath + buildPublicUrl)
 export function buildObjectUrl(bucket: string, key: string, req?: Request, cacheBust = false): string {
   const base = getPublicBase(req);
   const url = `${base}/${bucket}/${key}`;

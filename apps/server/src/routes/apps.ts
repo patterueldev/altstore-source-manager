@@ -5,7 +5,7 @@ import { App } from '../models/App.js';
 import { Version } from '../models/Version.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
-import { buildObjectUrl } from '../utils/publicUrl.js';
+import { buildStoragePath } from '../utils/publicUrl.js';
 
 const router: Router = express.Router();
 
@@ -141,13 +141,13 @@ router.post('/:id/icon', authMiddleware, upload.single('icon'), async (req, res)
       'Content-Type': 'image/png',
     });
 
-    // Generate download URL (host-aware)
-    const iconURL = buildObjectUrl(ICONS_BUCKET, filename, req);
+    // Store relative path (will be converted to full URL on read)
+    const iconPath = buildStoragePath(ICONS_BUCKET, filename);
 
-    app.iconURL = iconURL;
+    app.iconURL = iconPath;
     await app.save();
 
-    res.json({ iconURL });
+    res.json({ iconURL: iconPath });
   } catch (error) {
     console.error('Upload icon error:', error);
     res.status(500).json({ error: 'Failed to upload icon' });
@@ -178,8 +178,8 @@ router.post('/:id/screenshots', authMiddleware, upload.array('screenshots', 10),
         'Content-Type': 'image/png',
       });
 
-      const screenshotURL = buildObjectUrl(SCREENSHOTS_BUCKET, filename, req);
-      screenshotURLs.push(screenshotURL);
+      const screenshotPath = buildStoragePath(SCREENSHOTS_BUCKET, filename);
+      screenshotURLs.push(screenshotPath);
     }
 
     // Append to existing screenshots or replace
