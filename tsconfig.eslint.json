@@ -1,8 +1,7 @@
 {
-  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "target": "ES2020",
     "jsx": "react-jsx",
     "allowSyntheticDefaultImports": true,
