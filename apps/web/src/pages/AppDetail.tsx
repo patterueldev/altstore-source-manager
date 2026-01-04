@@ -895,15 +895,47 @@ function UploadVersionModal({ appId, latestVersion, onClose, onSuccess }: Upload
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [metadataError, setMetadataError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
 
-  const handleFileInput = (selected: File | null) => {
+  const applyMetadata = (meta: any) => {
+    if (!meta) return;
+    setFormData((prev) => {
+      const minOs = meta.minOSVersion && iosVersions.includes(meta.minOSVersion)
+        ? meta.minOSVersion
+        : prev.minOSVersion;
+      return {
+        ...prev,
+        version: meta.version || prev.version,
+        buildVersion: meta.buildVersion || prev.buildVersion,
+        minOSVersion: minOs,
+      };
+    });
+  };
+
+  const handleFileInput = async (selected: File | null) => {
     if (!selected) {
       setFile(null);
       return;
     }
     setError('');
+    setMetadataError('');
     setFile(selected);
+
+    setMetadataLoading(true);
+    try {
+      const data = new FormData();
+      data.append('ipa', selected);
+      const response = await api.post('/versions/ipa-metadata', data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      applyMetadata(response.data?.metadata);
+    } catch (err: any) {
+      setMetadataError(err.response?.data?.error || 'Failed to read IPA metadata');
+    } finally {
+      setMetadataLoading(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -997,6 +1029,12 @@ function UploadVersionModal({ appId, latestVersion, onClose, onSuccess }: Upload
                   </>
                 )}
               </label>
+              {metadataLoading && (
+                <p className="text-xs text-gray-500 mt-2">Reading IPA metadata...</p>
+              )}
+              {metadataError && (
+                <p className="text-xs text-red-600 mt-2">{metadataError}</p>
+              )}
             </div>
           </div>
 

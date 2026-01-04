@@ -1,11 +1,14 @@
 import express, { Router } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
+import AdmZip from 'adm-zip';
+import plist from 'plist';
 import { Version } from '../models/Version.js';
 import { App } from '../models/App.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { Client as MinioClient } from 'minio';
 import { buildStoragePath } from '../utils/publicUrl.js';
+import { parseBuffer as parseBinaryPlist } from 'bplist-parser';
 
 const router: Router = express.Router();
 
@@ -27,6 +30,14 @@ const minioClient = new MinioClient({
 const BUCKET_NAME = 'ipas';
 const ADMIN_SHARED_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
 
+type IpaMetadata = {
+  version?: string;
+  buildVersion?: string;
+  minOSVersion?: string;
+  bundleIdentifier?: string;
+  name?: string;
+};
+
 function extractObjectKey(downloadURL?: string | null): string | null {
   if (!downloadURL) return null;
   try {
@@ -41,6 +52,39 @@ function extractObjectKey(downloadURL?: string | null): string | null {
     const parts = sanitized.split('/');
     return parts.length > 1 ? parts.slice(1).join('/') : parts[0] || null;
   }
+}
+
+function extractIpaMetadata(buffer: Buffer): IpaMetadata {
+  const zip = new AdmZip(buffer);
+  const entries = zip.getEntries();
+  const infoEntry = entries.find((entry) => /Payload\/[^/]+\.app\/Info\.plist$/i.test(entry.entryName));
+
+  if (!infoEntry) {
+    throw new Error('Info.plist not found in IPA');
+  }
+
+  const data = infoEntry.getData();
+  let parsed: any;
+
+  // Detect binary plist by signature
+  if (data.slice(0, 6).toString('utf8') === 'bplist') {
+    const parsedArr = parseBinaryPlist(data);
+    parsed = parsedArr?.[0];
+  } else {
+    parsed = plist.parse(data.toString());
+  }
+
+  if (!parsed) {
+    throw new Error('Failed to parse Info.plist');
+  }
+
+  return {
+    version: parsed.CFBundleShortVersionString,
+    buildVersion: parsed.CFBundleVersion,
+    minOSVersion: parsed.MinimumOSVersion,
+    bundleIdentifier: parsed.CFBundleIdentifier,
+    name: parsed.CFBundleDisplayName || parsed.CFBundleName,
+  };
 }
 
 function validateCiSecret(req: express.Request, res: express.Response): boolean {
@@ -78,6 +122,22 @@ router.get('/:id', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Get version error:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Extract metadata from IPA without persisting (authenticated)
+router.post('/ipa-metadata', authMiddleware, upload.single('ipa'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'IPA file is required' });
+    }
+
+    const metadata = extractIpaMetadata(req.file.buffer);
+
+    res.json({ metadata });
+  } catch (error: any) {
+    console.error('IPA metadata error:', error);
+    res.status(400).json({ error: error?.message || 'Failed to read IPA metadata' });
   }
 });
 
