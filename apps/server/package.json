@@ -1,6 +1,6 @@
 {
   "name": "@altstore/server",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AltStore Source Manager Backend API",
   "type": "module",
   "main": "dist/index.js",
