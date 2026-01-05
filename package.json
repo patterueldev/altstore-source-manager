@@ -1,6 +1,6 @@
 {
   "name": "@altstore/workspace",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AltStore Source Manager - Full-stack JavaScript application",
   "type": "module",
   "packageManager": "pnpm@10.0.0",
