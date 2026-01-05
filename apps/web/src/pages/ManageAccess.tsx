@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 
 interface AccessKey {
@@ -20,7 +21,8 @@ interface CreateKeyResponse {
 }
 
 export default function ManageAccess() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [keys, setKeys] = useState<AccessKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +31,7 @@ export default function ManageAccess() {
   const [creating, setCreating] = useState(false);
   const [createdKey, setCreatedKey] = useState<CreateKeyResponse | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     fetchKeys();
@@ -117,12 +120,93 @@ export default function ManageAccess() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/')}
+                className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                aria-label="Back to dashboard"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h1 className="text-2xl font-bold text-gray-900">Manage Access Keys</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">Hi, {user?.username}</span>
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  aria-label="Menu"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                {showMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowMenu(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-20 border border-gray-200">
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          navigate('/');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Dashboard
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          navigate('/profile');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          navigate('/settings');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Settings
+                      </button>
+                      <div className="border-t border-gray-200 my-1" />
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          logout();
+                          navigate('/login');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Description */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Manage Access Keys</h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600">
             Create and manage API access keys for CI/CD pipelines. Each key pair (key + secret) enables secure IPA uploads without sharing admin credentials.
           </p>
         </div>
