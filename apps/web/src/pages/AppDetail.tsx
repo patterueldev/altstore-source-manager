@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SketchPicker } from 'react-color';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -43,11 +43,7 @@ export default function AppDetail() {
   const [replacingVersion, setReplacingVersion] = useState<Version | null>(null);
   const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [id]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [appRes, versionsRes] = await Promise.all([
         api.get(`/apps/${id}`),
@@ -66,7 +62,11 @@ export default function AppDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleDeleteVersion = async (versionId: string) => {
     if (!confirm('Delete this version?')) return;
@@ -1040,53 +1040,53 @@ function UploadVersionModal({ appId, latestVersion, onClose, onSuccess }: Upload
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Version *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Version</label>
               <input
                 type="text"
                 value={formData.version}
-                onChange={(e) => setFormData({ ...formData, version: e.target.value })}
-                placeholder="1.0.0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                required
+                disabled
+                placeholder="Auto-filled from IPA"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
               />
+              <p className="text-xs text-gray-500 mt-1">Auto-filled from IPA metadata</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Build Version *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Build Version</label>
               <input
                 type="text"
                 value={formData.buildVersion}
-                onChange={(e) => setFormData({ ...formData, buildVersion: e.target.value })}
-                placeholder="60"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                required
+                disabled
+                placeholder="Auto-filled from IPA"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
               />
+              <p className="text-xs text-gray-500 mt-1">Auto-filled from IPA metadata</p>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Release Date *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Release Date</label>
             <input
               type="date"
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              required
             />
+            <p className="text-xs text-gray-500 mt-1">Defaults to today if not specified</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Min iOS Version *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Min iOS Version</label>
               <select
                 value={formData.minOSVersion}
-                onChange={(e) => setFormData({ ...formData, minOSVersion: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                required
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
               >
                 {iosVersions.map((version) => (
                   <option key={version} value={version}>iOS {version}</option>
                 ))}
               </select>
+              <p className="text-xs text-gray-500 mt-1">Auto-filled from IPA metadata</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Max iOS Version</label>
