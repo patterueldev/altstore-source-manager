@@ -63,7 +63,7 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.head_ref }}
         run: |
-          PATTERN="^(feat|fix|docs|chore|refactor|test|build|ci|perf|revert|release)/#[0-9]+-[a-z0-9-]+$"
+          PATTERN="^(feat|fix|docs|chore|refactor|test|build|ci|perf|revert|release)/#[0-9]+-[a-z0-9.-]+$"
           
           if [[ ! $BRANCH_NAME =~ $PATTERN ]]; then
             echo "❌ Branch name does not follow the required format!"
@@ -82,7 +82,7 @@ jobs:
             echo "Rules:"
             echo "  - Type: feat, fix, docs, chore, refactor, test, build, ci, perf, revert, release"
             echo "  - Must include issue number: /#<number>-"
-            echo "  - Description: lowercase, dashed (kebab-case)"
+            echo "  - Description: lowercase, dashed (kebab-case), dots allowed for versions"
             exit 1
           fi
           
