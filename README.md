@@ -7,12 +7,16 @@ A self-hosted service to manage AltStore app sources, versions, and generate val
 - 📱 **App Management** — Create and manage multiple apps with versions, descriptions, icons, and screenshots
 - 🎨 **Web Dashboard** — Beautiful admin UI for managing your apps and versions
 - 📦 **IPA Upload** — Direct upload and hosting of .ipa files with automatic metadata extraction
+- 🤖 **Auto IPA Metadata** — Automatically extracts version, build number, and minimum iOS version from uploaded IPAs
 - 🔄 **Version Control** — Track multiple versions per app with release notes and iOS compatibility
+- 🔑 **CI/CD API Keys** — Secure API key authentication for automated pipeline uploads (replaces password-based auth)
+- 🚀 **CI/CD Integration** — Simplified upload endpoint with auto-extraction; only requires IPA + release notes
 - 🌐 **Multi-Host Support** — Works seamlessly across different domains (localhost, LAN, public)
 - 🐳 **Docker Ready** — One-command deployment with Docker Compose
-- 🔒 **Authentication** — Secure admin access with JWT tokens
+- 🔒 **Authentication** — Secure admin access with JWT tokens and API key management
 - 📸 **Asset Management** — Upload and manage app icons, screenshots with preview support
 - 🎯 **AltStore Compatible** — Generates valid source.json format for AltStore
+- 📊 **Audit Trail** — Track API key creation, usage, and last-used timestamps
 
 ## Quick Deployment (Production)
 
@@ -239,6 +243,34 @@ Interactive API documentation is available at `/api-docs` when the server is run
 2. Create a feature branch (`git checkout -b feat/amazing-feature`)
 3. Commit using [Conventional Commits](https://www.conventionalcommits.org/) format
 4. Push to your fork and submit a Pull Request
+
+## CI/CD Integration
+
+For automated IPA uploads from CI/CD pipelines, see the comprehensive [CI/CD API Keys Documentation](./docs/CI_CD_API_KEYS.md).
+
+**Quick Start:**
+
+1. **Create an Access Key** (Admin only):
+   - Navigate to "Manage Access" in the dashboard
+   - Click "Create New Access Key"
+   - Enter a descriptive name
+   - Save the generated key and secret (shown only once)
+
+2. **Upload IPA from CI/CD**:
+   ```bash
+   curl -X POST https://your-domain.com/api/versions/ci-upload \
+     -H "X-Access-Key: ak_xxxxx:secret_yyyyy" \
+     -F "appId=YOUR_APP_ID" \
+     -F "localizedDescription=Release notes here" \
+     -F "ipa=@MyApp.ipa"
+   ```
+
+3. **Metadata Auto-Extraction**:
+   - Version, build number, and minimum OS version are automatically extracted from the IPA
+   - No need to manually specify these values
+   - Override by including them in the request if needed
+
+For complete examples including GitHub Actions and GitLab CI configurations, see [CI_CD_API_KEYS.md](./docs/CI_CD_API_KEYS.md).
 
 ## Troubleshooting
 
