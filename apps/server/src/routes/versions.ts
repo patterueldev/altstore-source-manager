@@ -38,6 +38,22 @@ type IpaMetadata = {
   name?: string;
 };
 
+function extractObjectKey(downloadURL?: string | null): string | null {
+  if (!downloadURL) return null;
+  try {
+    const url = downloadURL.startsWith('http://') || downloadURL.startsWith('https://')
+      ? new URL(downloadURL)
+      : new URL(downloadURL, 'http://localhost');
+    const segments = url.pathname.replace(/^\/+/, '').split('/');
+    // drop bucket name
+    return segments.length > 1 ? segments.slice(1).join('/') : segments[0] || null;
+  } catch {
+    const sanitized = downloadURL.split('?')[0]?.split('#')[0]?.replace(/^\/+/, '') || '';
+    const parts = sanitized.split('/');
+    return parts.length > 1 ? parts.slice(1).join('/') : parts[0] || null;
+  }
+}
+
 function extractIpaMetadata(buffer: Buffer): IpaMetadata {
   const zip = new AdmZip(buffer);
   const entries = zip.getEntries();
