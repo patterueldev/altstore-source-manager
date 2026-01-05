@@ -1,7 +1,7 @@
 import express, { Request, Response, Router } from 'express';
-import { authMiddleware } from '../middleware/auth';
-import AccessKey from '../models/AccessKey';
-import { User } from '../models/User';
+import { authMiddleware } from '../middleware/auth.js';
+import AccessKey from '../models/AccessKey.js';
+import { User } from '../models/User.js';
 
 const router: Router = express.Router();
 

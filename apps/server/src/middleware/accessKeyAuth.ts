@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import AccessKey from '../models/AccessKey';
+import AccessKey from '../models/AccessKey.js';
 
 export interface AuthRequest extends Request {
   user?: {
