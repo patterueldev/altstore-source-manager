@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [sourceUrl, setSourceUrl] = useState<string>('');
   const [copyFeedback, setCopyFeedback] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -79,24 +80,66 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-gray-900">AltStore Manager</h1>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Hi, {user?.username}</span>
-              <button
-                onClick={() => navigate('/profile')}
-                className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
-              >
-                Profile
-              </button>
-              <button
-                onClick={() => navigate('/settings')}
-                className="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
-              >
-                Settings
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-3 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg"
-              >
-                Logout
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                  aria-label="Menu"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                {showMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowMenu(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-20 border border-gray-200">
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          navigate('/profile');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          navigate('/settings');
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Settings
+                      </button>
+                      {user?.username === 'admin' && (
+                        <button
+                          onClick={() => {
+                            setShowMenu(false);
+                            navigate('/manage-access');
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Manage Access
+                        </button>
+                      )}
+                      <div className="border-t border-gray-200 my-1" />
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          handleLogout();
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
