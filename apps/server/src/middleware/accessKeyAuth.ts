@@ -3,7 +3,7 @@ import AccessKey from '../models/AccessKey.js';
 
 export interface AuthRequest extends Request {
   user?: {
-    id: string;
+    userId: string;
     username: string;
   };
 }
@@ -59,7 +59,7 @@ export const accessKeyAuth = async (
 
     // Attach user info to request
     req.user = {
-      id: accessKey.userId.toString(),
+      userId: accessKey.userId.toString(),
       username: (accessKey.userId as any).username,
     };
 

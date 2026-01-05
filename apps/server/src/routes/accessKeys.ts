@@ -7,7 +7,7 @@ const router: Router = express.Router();
 
 interface AuthRequest extends Request {
   user?: {
-    id: string;
+    userId: string;
     username: string;
   };
 }
@@ -34,13 +34,13 @@ router.get(
         return;
       }
 
-      const admin = await isAdmin(req.user.id);
+      const admin = await isAdmin(req.user.userId);
       if (!admin) {
         res.status(403).json({ error: 'Only admins can manage access keys' });
         return;
       }
 
-      const keys = await AccessKey.find({ userId: req.user.id })
+      const keys = await AccessKey.find({ userId: req.user.userId })
         .select('-secret')
         .sort({ createdAt: -1 });
 
@@ -68,7 +68,7 @@ router.post(
         return;
       }
 
-      const admin = await isAdmin(req.user.id);
+      const admin = await isAdmin(req.user.userId);
       if (!admin) {
         res.status(403).json({ error: 'Only admins can create access keys' });
         return;
@@ -86,7 +86,7 @@ router.post(
 
       // Create and save access key
       const accessKey = new AccessKey({
-        userId: req.user.id,
+        userId: req.user.userId,
         key,
         secret, // Will be hashed by pre-save hook
         name: name.trim(),
@@ -124,7 +124,7 @@ router.delete(
         return;
       }
 
-      const admin = await isAdmin(req.user.id);
+      const admin = await isAdmin(req.user.userId);
       if (!admin) {
         res.status(403).json({ error: 'Only admins can revoke access keys' });
         return;
@@ -138,7 +138,7 @@ router.delete(
       }
 
       // Verify ownership
-      if (accessKey.userId.toString() !== req.user.id) {
+      if (accessKey.userId.toString() !== req.user.userId) {
         res.status(403).json({ error: 'Cannot revoke other users access keys' });
         return;
       }
