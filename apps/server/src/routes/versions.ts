@@ -6,6 +6,7 @@ import plist from 'plist';
 import { Version } from '../models/Version.js';
 import { App } from '../models/App.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { accessKeyAuth } from '../middleware/accessKeyAuth.js';
 import { Client as MinioClient } from 'minio';
 import { buildStoragePath } from '../utils/publicUrl.js';
 import { parseBuffer as parseBinaryPlist } from 'bplist-parser';
@@ -28,7 +29,6 @@ const minioClient = new MinioClient({
 });
 
 const BUCKET_NAME = 'ipas';
-const ADMIN_SHARED_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
 
 type IpaMetadata = {
   version?: string;
@@ -37,22 +37,6 @@ type IpaMetadata = {
   bundleIdentifier?: string;
   name?: string;
 };
-
-function extractObjectKey(downloadURL?: string | null): string | null {
-  if (!downloadURL) return null;
-  try {
-    const url = downloadURL.startsWith('http://') || downloadURL.startsWith('https://')
-      ? new URL(downloadURL)
-      : new URL(downloadURL, 'http://localhost');
-    const segments = url.pathname.replace(/^\/+/, '').split('/');
-    // drop bucket name
-    return segments.length > 1 ? segments.slice(1).join('/') : segments[0] || null;
-  } catch {
-    const sanitized = downloadURL.split('?')[0]?.split('#')[0]?.replace(/^\/+/, '') || '';
-    const parts = sanitized.split('/');
-    return parts.length > 1 ? parts.slice(1).join('/') : parts[0] || null;
-  }
-}
 
 function extractIpaMetadata(buffer: Buffer): IpaMetadata {
   const zip = new AdmZip(buffer);
@@ -85,19 +69,6 @@ function extractIpaMetadata(buffer: Buffer): IpaMetadata {
     bundleIdentifier: parsed.CFBundleIdentifier,
     name: parsed.CFBundleDisplayName || parsed.CFBundleName,
   };
-}
-
-function validateCiSecret(req: express.Request, res: express.Response): boolean {
-  if (!ADMIN_SHARED_SECRET) {
-    res.status(500).json({ error: 'Admin secret not configured on server' });
-    return false;
-  }
-  const provided = req.header('x-admin-secret');
-  if (provided !== ADMIN_SHARED_SECRET) {
-    res.status(401).json({ error: 'Invalid admin secret' });
-    return false;
-  }
-  return true;
 }
 
 // Get all versions for an app (protected)
@@ -207,10 +178,8 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
   }
 });
 
-// CI upload endpoint using admin secret header (x-admin-secret)
-router.post('/ci-upload', upload.single('ipa'), async (req, res) => {
-  if (!validateCiSecret(req, res)) return;
-
+// CI upload endpoint using access key authentication
+router.post('/ci-upload', accessKeyAuth, upload.single('ipa'), async (req, res) => {
   try {
     const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion, visible } = req.body;
 

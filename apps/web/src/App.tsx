@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import AppDetail from './pages/AppDetail';
 import Settings from './pages/Settings';
 import Profile from './pages/Profile';
+import ManageAccess from './pages/ManageAccess';
 
 export default function App() {
   return (
@@ -42,6 +43,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-access"
+            element={
+              <ProtectedRoute>
+                <ManageAccess />
               </ProtectedRoute>
             }
           />

@@ -16,6 +16,7 @@ import authRoutes from './routes/auth.js';
 import appRoutes from './routes/apps.js';
 import versionRoutes from './routes/versions.js';
 import sourceConfigRoutes from './routes/sourceConfig.js';
+import accessKeyRoutes from './routes/accessKeys.js';
 import { buildObjectUrl, getPublicBase, buildPublicUrl } from './utils/publicUrl.js';
 
 dotenv.config();
@@ -57,6 +58,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/apps', appRoutes);
 app.use('/api/versions', versionRoutes);
 app.use('/api/source-config', sourceConfigRoutes);
+app.use('/api/access-keys', accessKeyRoutes);
 
 // Optional public proxy to MinIO assets (single-origin access)
 app.get('/public/:bucket/*', async (req, res) => {
