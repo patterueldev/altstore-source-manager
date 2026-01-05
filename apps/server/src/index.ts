@@ -17,7 +17,7 @@ import appRoutes from './routes/apps.js';
 import versionRoutes from './routes/versions.js';
 import sourceConfigRoutes from './routes/sourceConfig.js';
 import accessKeyRoutes from './routes/accessKeys.js';
-import { buildObjectUrl, getPublicBase, buildPublicUrl } from './utils/publicUrl.js';
+import { buildPublicUrl } from './utils/publicUrl.js';
 
 dotenv.config();
 

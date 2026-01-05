@@ -248,7 +248,7 @@ export default function ManageAccess() {
                     disabled={creating}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Give this key a descriptive name to identify where it's used.
+                    Give this key a descriptive name to identify where it&apos;s used.
                   </p>
                 </div>
 
@@ -281,7 +281,7 @@ export default function ManageAccess() {
               <div>
                 <h3 className="text-lg font-bold text-green-900">Access Key Created Successfully</h3>
                 <p className="text-green-700 text-sm mt-1">
-                  Save your secret now. You won't be able to see it again.
+                  Save your secret now. You won&apos;t be able to see it again.
                 </p>
               </div>
               <button

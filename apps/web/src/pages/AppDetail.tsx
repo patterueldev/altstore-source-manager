@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SketchPicker } from 'react-color';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -43,11 +43,7 @@ export default function AppDetail() {
   const [replacingVersion, setReplacingVersion] = useState<Version | null>(null);
   const [previewScreenshot, setPreviewScreenshot] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, [id]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [appRes, versionsRes] = await Promise.all([
         api.get(`/apps/${id}`),
@@ -66,7 +62,11 @@ export default function AppDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleDeleteVersion = async (versionId: string) => {
     if (!confirm('Delete this version?')) return;
