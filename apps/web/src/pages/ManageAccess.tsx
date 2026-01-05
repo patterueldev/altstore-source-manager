@@ -392,16 +392,21 @@ export default function ManageAccess() {
         <div className="mt-8 bg-gray-900 text-gray-100 rounded-lg p-6 font-mono text-sm overflow-x-auto">
           <p className="text-gray-400 mb-3">Example: Upload IPA using curl</p>
           <pre className="whitespace-pre-wrap">
-{`curl -X POST https://your-domain/api/versions/ci-upload \\
+{`curl -X POST ${window.location.origin}/api/versions/ci-upload \\
   -H "X-Access-Key: ak_xxx:xxx...xxx" \\
-  -F "ipa=@MyApp.ipa" \\
   -F "appId=<app-id>" \\
-  -F "version=1.0.0" \\
-  -F "buildVersion=1" \\
-  -F "date=2025-01-05" \\
-  -F "minOSVersion=14.0" \\
-  -F "localizedDescription=Release notes here"`}
+  -F "localizedDescription=Release notes here" \\
+  -F "ipa=@MyApp.ipa"
+
+# Optional: Override auto-extracted metadata
+# -F "version=1.0.0" \\
+# -F "buildVersion=1" \\
+# -F "minOSVersion=14.0"`}
           </pre>
+          <p className="text-gray-400 text-xs mt-3">
+            💡 Version, build number, and minimum OS version are automatically extracted from the IPA file.
+            You can override them by including the fields in your request.
+          </p>
         </div>
       </div>
     </div>
