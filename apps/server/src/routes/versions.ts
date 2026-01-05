@@ -133,8 +133,9 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
   try {
     const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion, visible } = req.body;
 
-    if (!appId || !version || !buildVersion || !date || !minOSVersion || !localizedDescription) {
-      return res.status(400).json({ error: 'appId, version, buildVersion, date, minOSVersion, and localizedDescription are required' });
+    // Required fields
+    if (!appId || !localizedDescription) {
+      return res.status(400).json({ error: 'appId, ipa file, and localizedDescription are required' });
     }
 
     // Verify app exists
@@ -152,13 +153,32 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
     const fileBuffer = file.buffer;
     const fileSize = file.size;
 
+    // Extract metadata from IPA if not provided
+    let extractedVersion = version;
+    let extractedBuildVersion = buildVersion;
+    let extractedMinOSVersion = minOSVersion;
+
+    if (!version || !buildVersion || !minOSVersion) {
+      try {
+        const metadata = extractIpaMetadata(fileBuffer);
+        extractedVersion = version || metadata.version || '1.0.0';
+        extractedBuildVersion = buildVersion || metadata.buildVersion || '1';
+        extractedMinOSVersion = minOSVersion || metadata.minOSVersion || '14.0';
+      } catch (err) {
+        console.warn('Failed to extract IPA metadata, using defaults:', err);
+        if (!version) extractedVersion = '1.0.0';
+        if (!buildVersion) extractedBuildVersion = '1';
+        if (!minOSVersion) extractedMinOSVersion = '14.0';
+      }
+    }
+
     // Calculate SHA256
     const hash = crypto.createHash('sha256');
     hash.update(fileBuffer);
     const sha256 = hash.digest('hex');
 
     // Generate unique filename
-    const filename = `${app.bundleIdentifier}-${version}-${Date.now()}.ipa`;
+    const filename = `${app.bundleIdentifier}-${extractedVersion}-${Date.now()}.ipa`;
 
     // Upload to MinIO
     await minioClient.putObject(BUCKET_NAME, filename, fileBuffer, fileSize, {
@@ -171,13 +191,13 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
     // Create version record
     const versionDoc = new Version({
       appId,
-      version,
-      buildVersion,
-      date: new Date(date),
+      version: extractedVersion,
+      buildVersion: extractedBuildVersion,
+      date: date ? new Date(date) : new Date(),
       localizedDescription,
       downloadURL: downloadPath,
       size: fileSize,
-      minOSVersion,
+      minOSVersion: extractedMinOSVersion,
       maxOSVersion,
       sha256,
       visible: visible !== undefined ? visible : true,
@@ -199,8 +219,13 @@ router.post('/ci-upload', accessKeyAuth, upload.single('ipa'), async (req, res) 
   try {
     const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion, visible } = req.body;
 
-    if (!appId || !version || !buildVersion || !date || !minOSVersion || !localizedDescription) {
-      return res.status(400).json({ error: 'appId, version, buildVersion, date, minOSVersion, and localizedDescription are required' });
+    // Required fields
+    if (!appId || !localizedDescription) {
+      return res.status(400).json({ error: 'appId, ipa file, and localizedDescription are required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'IPA file is required' });
     }
 
     const app = await App.findById(appId);
@@ -208,19 +233,34 @@ router.post('/ci-upload', accessKeyAuth, upload.single('ipa'), async (req, res) 
       return res.status(404).json({ error: 'App not found' });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'IPA file is required' });
-    }
-
     const file = req.file;
     const fileBuffer = file.buffer;
     const fileSize = file.size;
+
+    // Extract metadata from IPA if not provided
+    let extractedVersion = version;
+    let extractedBuildVersion = buildVersion;
+    let extractedMinOSVersion = minOSVersion;
+
+    if (!version || !buildVersion || !minOSVersion) {
+      try {
+        const metadata = extractIpaMetadata(fileBuffer);
+        extractedVersion = version || metadata.version || '1.0.0';
+        extractedBuildVersion = buildVersion || metadata.buildVersion || '1';
+        extractedMinOSVersion = minOSVersion || metadata.minOSVersion || '14.0';
+      } catch (err) {
+        console.warn('Failed to extract IPA metadata, using defaults:', err);
+        if (!version) extractedVersion = '1.0.0';
+        if (!buildVersion) extractedBuildVersion = '1';
+        if (!minOSVersion) extractedMinOSVersion = '14.0';
+      }
+    }
 
     const hash = crypto.createHash('sha256');
     hash.update(fileBuffer);
     const sha256 = hash.digest('hex');
 
-    const filename = `${app.bundleIdentifier}-${version}-${Date.now()}.ipa`;
+    const filename = `${app.bundleIdentifier}-${extractedVersion}-${Date.now()}.ipa`;
 
     await minioClient.putObject(BUCKET_NAME, filename, fileBuffer, fileSize, {
       'Content-Type': 'application/octet-stream',
@@ -230,13 +270,13 @@ router.post('/ci-upload', accessKeyAuth, upload.single('ipa'), async (req, res) 
 
     const versionDoc = new Version({
       appId,
-      version,
-      buildVersion,
-      date: new Date(date),
+      version: extractedVersion,
+      buildVersion: extractedBuildVersion,
+      date: date ? new Date(date) : new Date(),
       localizedDescription,
       downloadURL: downloadPath,
       size: fileSize,
-      minOSVersion,
+      minOSVersion: extractedMinOSVersion,
       maxOSVersion,
       sha256,
       visible: visible !== undefined ? visible : true,
