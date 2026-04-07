@@ -272,14 +272,14 @@ router.post('/ci-upload', accessKeyAuth, upload.single('ipa'), async (req, res) 
 
     if (shouldOverwrite) {
       // Try to find an existing version for this appId + version string
-      const existingVersion = await Version.findOne({ appId, version: extractedVersion });
+      const existingVersion = await Version.findOne({ appId: String(appId), version: String(extractedVersion) });
 
       if (existingVersion) {
         // Best-effort removal of the previous IPA object from MinIO
         const previousKey = extractObjectKey(existingVersion.downloadURL);
         if (previousKey) {
           minioClient.removeObject(BUCKET_NAME, previousKey).catch((err) => {
-            console.warn('Failed to delete previous IPA from MinIO:', err);
+            console.warn(`Failed to delete previous IPA (${previousKey}) for app ${appId} version ${extractedVersion} from MinIO:`, err);
           });
         }
 
