@@ -217,7 +217,7 @@ router.post('/', authMiddleware, upload.single('ipa'), async (req, res) => {
 // CI upload endpoint using access key authentication
 router.post('/ci-upload', accessKeyAuth, upload.single('ipa'), async (req, res) => {
   try {
-    const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion, visible } = req.body;
+    const { appId, version, buildVersion, date, localizedDescription, minOSVersion, maxOSVersion, visible, overwrite } = req.body;
 
     // Required fields
     if (!appId || !localizedDescription) {
@@ -268,6 +268,36 @@ router.post('/ci-upload', accessKeyAuth, upload.single('ipa'), async (req, res) 
 
     const downloadPath = buildStoragePath(BUCKET_NAME, filename);
 
+    const shouldOverwrite = overwrite === true || overwrite === 'true';
+
+    if (shouldOverwrite) {
+      // Try to find an existing version for this appId + version string
+      const existingVersion = await Version.findOne({ appId, version: extractedVersion });
+
+      if (existingVersion) {
+        // Best-effort removal of the previous IPA object from MinIO
+        const previousKey = extractObjectKey(existingVersion.downloadURL);
+        if (previousKey) {
+          minioClient.removeObject(BUCKET_NAME, previousKey).catch((err) => {
+            console.warn('Failed to delete previous IPA from MinIO:', err);
+          });
+        }
+
+        existingVersion.buildVersion = extractedBuildVersion;
+        existingVersion.date = date ? new Date(date) : new Date();
+        existingVersion.localizedDescription = localizedDescription;
+        existingVersion.downloadURL = downloadPath;
+        existingVersion.size = fileSize;
+        existingVersion.minOSVersion = extractedMinOSVersion;
+        if (maxOSVersion !== undefined) existingVersion.maxOSVersion = maxOSVersion;
+        if (visible !== undefined) existingVersion.visible = visible === true || visible === 'true';
+        existingVersion.sha256 = sha256;
+
+        await existingVersion.save();
+        return res.json(existingVersion);
+      }
+    }
+
     const versionDoc = new Version({
       appId,
       version: extractedVersion,
@@ -279,7 +309,7 @@ router.post('/ci-upload', accessKeyAuth, upload.single('ipa'), async (req, res) 
       minOSVersion: extractedMinOSVersion,
       maxOSVersion,
       sha256,
-      visible: visible !== undefined ? visible : true,
+      visible: visible !== undefined ? (visible === true || visible === 'true') : true,
     });
 
     await versionDoc.save();
